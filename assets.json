@@ -80,6 +80,34 @@
    "credit": "\"Tozzo '98 Tuned - Low Poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0",
    "rotY": -1.5708,
    "len": 4.4
+  },
+  {
+   "id": "vaz",
+   "file": "cars/car_vaz.glb",
+   "car": "Kumru",
+   "tint": 3,
+   "rotY": 3.1416,
+   "len": 4.0,
+   "credit": "\"USSR VAZ-2108\" — NewViStudios (sketchfab.com/newvistudios), CC BY 4.0"
+  },
+  {
+   "id": "polo",
+   "file": "cars/car_polo.glb",
+   "car": "Alaz GT",
+   "tint": 3,
+   "rotY": 3.1416,
+   "len": 4.05,
+   "credit": "\"2016 Volkswagen Polo\" — BHP3D (sketchfab.com/BHP3D), CC BY 4.0",
+   "paint": "^primary"
+  },
+  {
+   "id": "p206",
+   "file": "cars/car_p206.glb",
+   "car": "Meltem",
+   "tint": 3,
+   "rotY": 0,
+   "len": 3.85,
+   "credit": "\"Peugeot 206 low poly\" — Ed (sketchfab.com/ed3800), CC BY 4.0"
   }
  ],
  "animals": {
@@ -151,6 +179,10 @@
    "file": "buildings/bld_city_pack.glb",
    "pack": true,
    "credit": "\"Low-poly City Buildings\" — smooth998 (sketchfab.com/smooth998), CC BY 4.0"
+  },
+  {
+   "file": "buildings/bld_brick.glb",
+   "credit": "\"Pubg Building / Low Poly Building\" — ASAD MEHMOOD (sketchfab.com), CC BY 4.0"
   }
  ],
  "credits": [
@@ -223,5 +255,29 @@
    }
   ],
   "anims": []
+ },
+ "houses": [
+  {
+   "file": "houses/hs_stone.glb",
+   "credit": "\"Low poly House, single texture\" — Danylo Tyupa (sketchfab.com/danzt), CC BY 4.0"
+  },
+  {
+   "file": "houses/hs_wood.glb",
+   "credit": "\"Low poly House\" — winwoods (sketchfab.com/winwoods), CC BY 4.0"
+  }
+ ],
+ "landmarks": {
+  "mosque": {
+   "file": "buildings/lm_mosque.glb",
+   "credit": "\"Muhammed Ali Mosque\" — rowan (sketchfab.com/rowana), CC BY 4.0"
+  },
+  "gas_old": {
+   "file": "buildings/lm_gas_old.glb",
+   "credit": "\"Old Gas Station\" — CGMeller (sketchfab.com/CGMeller), CC BY 4.0"
+  },
+  "gas_lp": {
+   "file": "buildings/lm_gas_lp.glb",
+   "credit": "\"Low Poly Gas Station\" — Virginia Vidonis (sketchfab.com), CC BY 4.0"
+  }
  }
 }
