@@ -46,6 +46,40 @@
    "car": "Poyraz Lüks",
    "tint": 3,
    "credit": "\"Low-Poly Car No. 1\" — Arcturus (sketchfab.com/Arcturus3D), CC BY 4.0"
+  },
+  {
+   "id": "cadillac",
+   "file": "cars/car_cadillac.glb",
+   "car": "Antika",
+   "tint": 3,
+   "credit": "\"Low Poly Car - Cadillac 75 Sedan 1953\" — tedpermana (sketchfab.com/tedpermana), CC BY 4.0",
+   "len": 5.5
+  },
+  {
+   "id": "wagoneer",
+   "file": "cars/car_wagoneer.glb",
+   "car": "Kaya",
+   "tint": 3,
+   "credit": "\"Low poly old SUV Wagoneer 1986\" — creosine (sketchfab.com/creosine), CC BY 4.0",
+   "len": 4.7
+  },
+  {
+   "id": "eugene",
+   "file": "cars/car_eugene.glb",
+   "car": "Sarp",
+   "tint": 3,
+   "credit": "\"Eugene MK6 '65 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0",
+   "rotY": -1.5708,
+   "len": 4.2
+  },
+  {
+   "id": "tozzo",
+   "file": "cars/car_tozzo.glb",
+   "car": "Yakamoz",
+   "tint": 3,
+   "credit": "\"Tozzo '98 Tuned - Low Poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0",
+   "rotY": -1.5708,
+   "len": 4.4
   }
  ],
  "animals": {
@@ -112,6 +146,11 @@
   {
    "file": "buildings/bld_lowpoly.glb",
    "credit": "\"Low Poly Building\" — tedpermana (sketchfab.com/tedpermana), CC BY 4.0"
+  },
+  {
+   "file": "buildings/bld_city_pack.glb",
+   "pack": true,
+   "credit": "\"Low-poly City Buildings\" — smooth998 (sketchfab.com/smooth998), CC BY 4.0"
   }
  ],
  "credits": [
