@@ -98,7 +98,8 @@
    "rotY": 3.1416,
    "len": 4.05,
    "credit": "\"2016 Volkswagen Polo\" — BHP3D (sketchfab.com/BHP3D), CC BY 4.0",
-   "paint": "^primary"
+   "paint": "^primary",
+   "uhd": "ultra/polo.glb"
   },
   {
    "id": "p206",
@@ -182,7 +183,8 @@
   },
   {
    "file": "buildings/bld_brick.glb",
-   "credit": "\"Pubg Building / Low Poly Building\" — ASAD MEHMOOD (sketchfab.com), CC BY 4.0"
+   "credit": "\"Pubg Building / Low Poly Building\" — ASAD MEHMOOD (sketchfab.com), CC BY 4.0",
+   "uhd": "ultra/pubg.glb"
   }
  ],
  "credits": [
@@ -259,25 +261,36 @@
  "houses": [
   {
    "file": "houses/hs_stone.glb",
-   "credit": "\"Low poly House, single texture\" — Danylo Tyupa (sketchfab.com/danzt), CC BY 4.0"
+   "credit": "\"Low poly House, single texture\" — Danylo Tyupa (sketchfab.com/danzt), CC BY 4.0",
+   "uhd": "ultra/house_st.glb"
   },
   {
    "file": "houses/hs_wood.glb",
-   "credit": "\"Low poly House\" — winwoods (sketchfab.com/winwoods), CC BY 4.0"
+   "credit": "\"Low poly House\" — winwoods (sketchfab.com/winwoods), CC BY 4.0",
+   "uhd": "ultra/house.glb"
+  },
+  {
+   "file": "ultra/house_furn.glb",
+   "uhd": "ultra/house_furn.glb",
+   "ultraOnly": true,
+   "credit": "\"Low Poly House with Furniture\" — daemoniic (sketchfab.com/daemoniic), CC BY 4.0"
   }
  ],
  "landmarks": {
   "mosque": {
    "file": "buildings/lm_mosque.glb",
-   "credit": "\"Muhammed Ali Mosque\" — rowan (sketchfab.com/rowana), CC BY 4.0"
+   "credit": "\"Muhammed Ali Mosque\" — rowan (sketchfab.com/rowana), CC BY 4.0",
+   "uhd": "ultra/mosque.glb"
   },
   "gas_old": {
    "file": "buildings/lm_gas_old.glb",
-   "credit": "\"Old Gas Station\" — CGMeller (sketchfab.com/CGMeller), CC BY 4.0"
+   "credit": "\"Old Gas Station\" — CGMeller (sketchfab.com/CGMeller), CC BY 4.0",
+   "uhd": "ultra/gas_old.glb"
   },
   "gas_lp": {
    "file": "buildings/lm_gas_lp.glb",
-   "credit": "\"Low Poly Gas Station\" — Virginia Vidonis (sketchfab.com), CC BY 4.0"
+   "credit": "\"Low Poly Gas Station\" — Virginia Vidonis (sketchfab.com), CC BY 4.0",
+   "uhd": "ultra/gas_lp.glb"
   }
  }
 }
