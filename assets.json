@@ -240,23 +240,54 @@
    {
     "file": "humans/hm_soldier.glb",
     "roles": [
-     "civ",
-     "cop",
-     "gang",
-     "me"
+     "cop"
     ],
     "height": 1.8
    },
    {
-    "file": "humans/hm_michelle.glb",
+    "file": "humans/hm_remy.glb",
+    "uhd": "ultra/hm_remy.glb",
+    "roles": [
+     "me",
+     "civ"
+    ],
+    "height": 1.78,
+    "set": "mx",
+    "rotY": 0
+   },
+   {
+    "file": "humans/hm_ch31.glb",
+    "uhd": "ultra/hm_ch31.glb",
+    "roles": [
+     "civ",
+     "gang"
+    ],
+    "height": 1.76,
+    "set": "mx",
+    "rotY": 0
+   },
+   {
+    "file": "humans/hm_ch37.glb",
+    "uhd": "ultra/hm_ch37.glb",
     "roles": [
      "civ"
     ],
-    "height": 1.68,
-    "retarget": "humans/hm_soldier.glb"
+    "height": 1.7,
+    "set": "mx",
+    "rotY": 0
    }
   ],
-  "anims": []
+  "anims": [],
+  "sets": {
+   "mx": {
+    "idle": "humans/an_idle.glb",
+    "walk": "humans/an_walk.glb",
+    "aim": "humans/an_aim.glb",
+    "shoot": "humans/an_shoot.glb",
+    "die": "humans/an_die.glb",
+    "gesture": "humans/an_torch.glb"
+   }
+  }
  },
  "houses": [
   {
