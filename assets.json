@@ -323,5 +323,11 @@
    "credit": "\"Low Poly Gas Station\" — Virginia Vidonis (sketchfab.com), CC BY 4.0",
    "uhd": "ultra/gas_lp.glb"
   }
+ },
+ "interior": {
+  "house": {
+   "file": "interior/house_int.glb",
+   "credit": "\"Low Poly House with Furniture\" — daemoniic (sketchfab.com/daemoniic), CC BY 4.0"
+  }
  }
 }
