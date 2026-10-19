@@ -109,6 +109,23 @@
    "rotY": 0,
    "len": 3.85,
    "credit": "\"Peugeot 206 low poly\" — Ed (sketchfab.com/ed3800), CC BY 4.0"
+  },
+  {
+   "id": "vitz",
+   "file": "cars/car_vitz.glb",
+   "car": "Serçe RS",
+   "tint": 3,
+   "len": 3.8,
+   "paint": "^Paint",
+   "credit": "\"2008 Toyota Vitz RS CVT [NPC91]\" — Raysh (sketchfab.com/Raysh_.), CC BY 4.0"
+  },
+  {
+   "id": "tata",
+   "file": "cars/car_tata.glb",
+   "car": "Yük Kamyonu",
+   "tint": 0,
+   "len": 7.6,
+   "credit": "\"Tata Signa Cargo Truck | Low Poly Game Ready PBR\" — kevin_k_5124 (sketchfab.com/kevin_k_5124), CC BY 4.0"
   }
  ],
  "animals": {
@@ -169,6 +186,24 @@
    "size": 1.45,
    "vd": 140,
    "credit": "\"Abandoned Car - Hudson Hornet\" — ROH3D (sketchfab.com/roh3d), CC BY 4.0"
+  },
+  "tlight": {
+   "file": "props/prop_traffic_light.glb",
+   "size": 4.6,
+   "vd": 140,
+   "credit": "\"City Kit (Roads)\" — Kenney (kenney.nl), CC0"
+  },
+  "cone": {
+   "file": "props/prop_construction_cone.glb",
+   "size": 0.75,
+   "vd": 60,
+   "credit": "\"City Kit (Roads)\" — Kenney (kenney.nl), CC0"
+  },
+  "barrier": {
+   "file": "props/prop_construction_barrier.glb",
+   "size": 1.1,
+   "vd": 70,
+   "credit": "\"City Kit (Roads)\" — Kenney (kenney.nl), CC0"
   }
  },
  "buildings": [
@@ -190,11 +225,12 @@
  "credits": [
   "Gökyüzü: \"Quarry 01\" — Poly Haven (CC0)",
   "Dokular: Asphalt 02, Concrete Pavers, Aerial Grass Rock, Rocky Terrain, Rock Face 03, Snow 03 — Poly Haven (CC0)",
-  "\"Michelle\" ve \"Vanguard\" karakterleri — Mixamo (Adobe), three.js örnek modelleri"
+  "\"Michelle\" ve \"Vanguard\" karakterleri — Mixamo (Adobe), three.js örnek modelleri",
+  "Dokular: Asphalt 0002, Ground 0003 — TextureCan (CC0); Forest Ground 04, Coast Sand Rocks 02 — Poly Haven (CC0)"
  ],
  "trees": {
-  "file": "trees/forest_pack.glb",
-  "credit": "\"Low Poly Forest Tree Pack\" — 99.Miles (sketchfab.com/99.Miles), CC BY 4.0"
+  "file": "trees/lowpoly_pack.glb",
+  "credit": "\"Nature pack vol.3\" — Quaternius (CC0)"
  },
  "weapons": {
   "katana": {
@@ -205,8 +241,8 @@
  },
  "roads": {
   "asphalt": {
-   "2k": "tex/asphalt_2k.jpg",
-   "1k": "tex/asphalt_1k.jpg"
+   "2k": "tex/asphalt3_1k.jpg",
+   "1k": "tex/asphalt3_1k.jpg"
   },
   "walk": {
    "2k": "tex/walk_2k.jpg",
@@ -220,9 +256,9 @@
    "1k": "tex/grass_1k.jpg"
   },
   "dirt": {
-   "4k": "tex/dirt_4k.jpg",
-   "2k": "tex/dirt_2k.jpg",
-   "1k": "tex/dirt_1k.jpg"
+   "4k": "tex/dirt3_1k.jpg",
+   "2k": "tex/dirt3_1k.jpg",
+   "1k": "tex/dirt3_1k.jpg"
   },
   "rock": {
    "4k": "tex/rock_4k.jpg",
@@ -329,5 +365,13 @@
    "file": "interior/house_int.glb",
    "credit": "\"Low Poly House with Furniture\" — daemoniic (sketchfab.com/daemoniic), CC BY 4.0"
   }
+ },
+ "garden": {
+  "file": "trees/garden_pack.glb",
+  "credit": "\"Stylized Nature MegaKit\" — Quaternius (CC0)"
+ },
+ "extraTex": {
+  "shore": "tex/shore_1k.jpg",
+  "crack": "tex/crack_1k.jpg"
  }
 }
