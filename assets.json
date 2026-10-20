@@ -226,11 +226,14 @@
   "Gökyüzü: \"Quarry 01\" — Poly Haven (CC0)",
   "Dokular: Asphalt 02, Concrete Pavers, Aerial Grass Rock, Rocky Terrain, Rock Face 03, Snow 03 — Poly Haven (CC0)",
   "\"Michelle\" ve \"Vanguard\" karakterleri — Mixamo (Adobe), three.js örnek modelleri",
-  "Dokular: Asphalt 0002, Ground 0003 — TextureCan (CC0); Forest Ground 04, Coast Sand Rocks 02 — Poly Haven (CC0)"
+  "Dokular: Asphalt 0002, Ground 0003 — TextureCan (CC0); Forest Ground 04, Coast Sand Rocks 02 — Poly Haven (CC0)",
+  "Poly Haven (polyhaven.com) — medieval_red_brick, stacked_brick_wall, concrete_tiles, ganges_river_pebbles, grasslands_sunset HDRI — CC0",
+  "\"Stylized Nature MegaKit\" — Quaternius (CC0)"
  ],
  "trees": {
   "file": "trees/lowpoly_pack.glb",
-  "credit": "\"Nature pack vol.3\" — Quaternius (CC0)"
+  "credit": "\"Nature pack vol.3\" — Quaternius (CC0)",
+  "hq": "trees/megakit.glb"
  },
  "weapons": {
   "katana": {
@@ -372,6 +375,22 @@
  },
  "extraTex": {
   "shore": "tex/shore_1k.jpg",
-  "crack": "tex/crack_1k.jpg"
+  "crack": "tex/crack_1k.jpg",
+  "tiles": "tex/tiles_1k.jpg",
+  "pebbles": "tex/pebbles_1k.jpg"
+ },
+ "facade": {
+  "brick": {
+   "1k": "tex/brick_red_1k.jpg",
+   "512": "tex/brick_red_512.jpg"
+  },
+  "brick2": {
+   "1k": "tex/brick_old_1k.jpg",
+   "512": "tex/brick_old_512.jpg"
+  }
+ },
+ "skyPhoto": {
+  "2k": "tex/sky_photo_2k.jpg",
+  "1k": "tex/sky_photo_1k.jpg"
  }
 }
