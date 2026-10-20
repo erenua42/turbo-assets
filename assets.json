@@ -324,7 +324,10 @@
     "aim": "humans/an_aim.glb",
     "shoot": "humans/an_shoot.glb",
     "die": "humans/an_die.glb",
-    "gesture": "humans/an_torch.glb"
+    "gesture": "humans/an_torch.glb",
+    "wave": "humans/an_wave.glb",
+    "grab": "humans/an_grab.glb",
+    "switch": "humans/an_switch.glb"
    }
   }
  },
