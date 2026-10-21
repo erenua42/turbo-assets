@@ -314,6 +314,15 @@
     "height": 1.7,
     "set": "mx",
     "rotY": 0
+   },
+   {
+    "file": "humans/hm_michelle.glb",
+    "roles": [
+     "civ"
+    ],
+    "height": 1.66,
+    "set": "mx",
+    "rotY": 0
    }
   ],
   "anims": [],
