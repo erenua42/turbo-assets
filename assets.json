@@ -336,7 +336,8 @@
     "gesture": "humans/an_torch.glb",
     "wave": "humans/an_wave.glb",
     "grab": "humans/an_grab.glb",
-    "switch": "humans/an_switch.glb"
+    "switch": "humans/an_switch.glb",
+    "dance": "humans/hm_michelle.glb"
    }
   }
  },
