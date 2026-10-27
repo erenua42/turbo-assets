@@ -310,8 +310,8 @@
  },
  "roads": {
   "asphalt": {
-   "2k": "tex/asphalt3_1k.jpg",
-   "1k": "tex/asphalt3_1k.jpg"
+   "2k": "tex/asphalt_ph_2k.jpg",
+   "1k": "tex/asphalt_ph_1k.jpg"
   },
   "walk": {
    "2k": "tex/walk_2k.jpg",
@@ -471,5 +471,9 @@
  "skyPhoto": {
   "2k": "tex/sky_photo_2k.jpg",
   "1k": "tex/sky_photo_1k.jpg"
+ },
+ "detail": {
+  "plaster": "tex/detail_plaster_512.jpg",
+  "concrete": "tex/detail_concrete_512.jpg"
  }
 }
