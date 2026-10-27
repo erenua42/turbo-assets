@@ -126,6 +126,112 @@
    "tint": 0,
    "len": 7.6,
    "credit": "\"Tata Signa Cargo Truck | Low Poly Game Ready PBR\" — kevin_k_5124 (sketchfab.com/kevin_k_5124), CC BY 4.0"
+  },
+  {
+   "id": "spark",
+   "file": "cars/car_spark.glb",
+   "car": "Minik",
+   "tint": 3,
+   "rotY": 3.1416,
+   "len": 3.65,
+   "paint": "^primary",
+   "credit": "\"Chevrolet Spark\" — BHP3D (sketchfab.com/BHP3D), CC BY 4.0 (logolar kaldırıldı)"
+  },
+  {
+   "id": "retro",
+   "file": "cars/car_retro.glb",
+   "car": "Meltem",
+   "tint": 3,
+   "len": 3.85,
+   "paint": "^CarPaint",
+   "credit": "\"Retro inspired 2000s hatchback\" — MaG80 (sketchfab.com/MaG80), CC BY 4.0"
+  },
+  {
+   "id": "r12",
+   "file": "cars/car_r12.glb",
+   "car": "Lodos",
+   "tint": 2,
+   "len": 4.35,
+   "paint": "^Vehicle",
+   "credit": "\"VEHICLE - RENAULT 12\" — thcyrax (sketchfab.com/thcyrax), CC BY 4.0"
+  },
+  {
+   "id": "lada",
+   "file": "cars/car_lada.glb",
+   "car": "Nostalji",
+   "tint": 3,
+   "len": 4.15,
+   "paint": "^CarBody",
+   "credit": "\"LADA VAZ 2107\" — dograaman999 (sketchfab.com/dograaman999), CC BY 4.0"
+  },
+  {
+   "id": "taxi",
+   "file": "cars/car_taxi.glb",
+   "car": "Sarı Taksi",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 5.0,
+   "paint": "NOPAINT",
+   "credit": "\"Fairheaven LT '80 Taxi - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "cop",
+   "file": "cars/car_cop.glb",
+   "car": "Devriye",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 5.0,
+   "paint": "NOPAINT",
+   "credit": "\"Fairheaven LT '80 Cop Cruiser - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "utility",
+   "file": "cars/car_utility.glb",
+   "car": "Karasaban",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 5.3,
+   "paint": "Bodymat",
+   "credit": "\"Lightbody '90 MD Utility - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "pickup",
+   "file": "cars/car_pickup.glb",
+   "car": "Manda",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 5.1,
+   "paint": "Bodymat",
+   "credit": "\"Conquer '89 Pickup - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "euvan",
+   "file": "cars/car_euvan.glb",
+   "car": "Kargo",
+   "tint": 3,
+   "len": 5.3,
+   "paint": "body",
+   "credit": "\"European Delivery Van\" — evan.hiltz (sketchfab.com/evan.hiltz), CC BY 4.0"
+  },
+  {
+   "id": "negot",
+   "file": "cars/car_negot.glb",
+   "car": "Tufan",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 4.95,
+   "paint": "Bodymat",
+   "credit": "\"Negotiator '80 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "illinois",
+   "file": "cars/car_illinois.glb",
+   "car": "Ayaz V8",
+   "tint": 3,
+   "rotY": -1.5708,
+   "len": 5.1,
+   "paint": "Bodymat",
+   "credit": "\"Illinois '90 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
   }
  ],
  "animals": {
