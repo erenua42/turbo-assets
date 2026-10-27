@@ -204,6 +204,72 @@
    "size": 1.1,
    "vd": 70,
    "credit": "\"City Kit (Roads)\" — Kenney (kenney.nl), CC0"
+  },
+  "ph_bench": {
+   "file": "props/ph_bench.glb",
+   "size": 0.9,
+   "vd": 60,
+   "credit": "\"Painted Wooden Bench\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_trashcan": {
+   "file": "props/ph_trashcan.glb",
+   "size": 0.95,
+   "vd": 55,
+   "credit": "\"Metal Trash Can\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_utilbox": {
+   "file": "props/ph_utilbox.glb",
+   "size": 1.35,
+   "vd": 60,
+   "credit": "\"Utility Box 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_planter": {
+   "file": "props/ph_planter.glb",
+   "size": 0.75,
+   "vd": 50,
+   "credit": "\"Planter Box 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_barrel": {
+   "file": "props/ph_barrel.glb",
+   "size": 0.9,
+   "vd": 55,
+   "credit": "\"Barrel 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_tyre": {
+   "file": "props/ph_tyre.glb",
+   "size": 0.75,
+   "vd": 45,
+   "credit": "\"Old Tyre\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_box": {
+   "file": "props/ph_box.glb",
+   "size": 0.55,
+   "vd": 40,
+   "credit": "\"Cardboard Box 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_cafe": {
+   "file": "props/ph_cafe.glb",
+   "size": 0.95,
+   "vd": 55,
+   "credit": "\"Outdoor Table Chair Set 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_roadblock": {
+   "file": "props/ph_roadblock.glb",
+   "size": 0.85,
+   "vd": 80,
+   "credit": "\"Concrete Road Barrier\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_rocks": {
+   "file": "props/ph_rocks.glb",
+   "size": 0.7,
+   "vd": 70,
+   "credit": "\"Rock Moss Set 01\" — Poly Haven (polyhaven.com), CC0"
+  },
+  "ph_stump": {
+   "file": "props/ph_stump.glb",
+   "size": 0.6,
+   "vd": 60,
+   "credit": "\"Tree Stump 01\" — Poly Haven (polyhaven.com), CC0"
   }
  },
  "buildings": [
