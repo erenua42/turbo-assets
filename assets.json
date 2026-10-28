@@ -400,12 +400,16 @@
   "\"Michelle\" ve \"Vanguard\" karakterleri — Mixamo (Adobe), three.js örnek modelleri",
   "Dokular: Asphalt 0002, Ground 0003 — TextureCan (CC0); Forest Ground 04, Coast Sand Rocks 02 — Poly Haven (CC0)",
   "Poly Haven (polyhaven.com) — medieval_red_brick, stacked_brick_wall, concrete_tiles, ganges_river_pebbles, grasslands_sunset HDRI — CC0",
-  "\"Stylized Nature MegaKit\" — Quaternius (CC0)"
+  "\"Stylized Nature MegaKit\" — Quaternius (CC0)",
+  "Ağaç/çalı/kaya modelleri (Sketchfab, CC BY 4.0): \"Pine Tree [Game-ready]\" — Wenedi; \"POPLAR TREE 1\" — evseevdaniil0011; \"Trees (low-Poly, 4k Tris / Tree)\" — Sereib; \"Coniferous Forest Assets Pack\" — dariiiii; \"Low Poly Forest Tree Pack\" — 99.Miles; \"Bush models pack\" — lolipop_1707; \"Lowpoly Rocks - 1\" — norgeotloic",
+  "Çimen dokusu: \"Grass Bushes (game ready asset)\" — apariciosilva3D (Sketchfab), CC BY 4.0",
+  "Tarla dokuları: Poly Haven (withered_grass, sparse_grass, farm_soil), CC0"
  ],
  "trees": {
   "file": "trees/lowpoly_pack.glb",
   "credit": "\"Nature pack vol.3\" — Quaternius (CC0)",
-  "hq": "trees/megakit.glb"
+  "hq": "trees/megakit.glb",
+  "real": "trees/real_pack.glb"
  },
  "weapons": {
   "katana": {
@@ -581,5 +585,11 @@
  "detail": {
   "plaster": "tex/detail_plaster_512.jpg",
   "concrete": "tex/detail_concrete_512.jpg"
+ },
+ "grassCard": "tex/grass_card.png",
+ "fieldTex": {
+  "wheat": "tex/field_wheat.jpg",
+  "green": "tex/field_green.jpg",
+  "soil": "tex/field_soil.jpg"
  }
 }
