@@ -232,6 +232,22 @@
    "len": 5.1,
    "paint": "Bodymat",
    "credit": "\"Illinois '90 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "tractor",
+   "file": "cars/car_tractor.glb",
+   "car": "Traktör",
+   "rotY": 0,
+   "len": 3.7,
+   "tint": 1,
+   "paint": "^zzznone$",
+   "credit": "\"Tractor\" — bevadek (sketchfab.com/bevadek), CC BY 4.0",
+   "seat": {
+    "x": 0,
+    "y": 0.35,
+    "z": -0.55,
+    "s": 0.95
+   }
   }
  ],
  "animals": {
