@@ -536,6 +536,10 @@
  },
  "houses": [
   {
+   "file": "houses/hs_koy.glb",
+   "credit": "\"House\" — jeandiz (sketchfab.com/jeandiz), CC BY 4.0"
+  },
+  {
    "file": "houses/hs_stone.glb",
    "credit": "\"Low poly House, single texture\" — Danylo Tyupa (sketchfab.com/danzt), CC BY 4.0",
    "uhd": "ultra/house_st.glb"
