@@ -248,6 +248,16 @@
     "z": -0.55,
     "s": 0.95
    }
+  },
+  {
+   "id": "emektar",
+   "file": "cars/car_emektar.glb",
+   "car": "Emektar",
+   "rotY": 0,
+   "len": 4.05,
+   "tint": 3,
+   "paint": "^\\.153$",
+   "credit": "\"Lada-2101\" — ratura5100 (sketchfab.com/ratura5100), CC BY 4.0"
   }
  ],
  "animals": {
