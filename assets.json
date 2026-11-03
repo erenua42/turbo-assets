@@ -258,6 +258,51 @@
    "tint": 3,
    "paint": "^\\.153$",
    "credit": "\"Lada-2101\" — ratura5100 (sketchfab.com/ratura5100), CC BY 4.0"
+  },
+  {
+   "id": "saba",
+   "file": "cars/car_saba.glb",
+   "rotY": -1.5708,
+   "len": 4.5,
+   "tint": 3,
+   "paint": "Bodymat",
+   "credit": "\"Saba V12 '95 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "hazer",
+   "file": "cars/car_hazer.glb",
+   "rotY": -1.5708,
+   "len": 4.25,
+   "tint": 3,
+   "paint": "Bodymat",
+   "credit": "\"Hazer Turbo '81 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "phoenix",
+   "file": "cars/car_phoenix.glb",
+   "rotY": -1.5708,
+   "len": 4.9,
+   "tint": 3,
+   "paint": "Bodymat",
+   "credit": "\"Phoenix 455 '71 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "asti",
+   "file": "cars/car_asti.glb",
+   "rotY": -1.5708,
+   "len": 3.95,
+   "tint": 3,
+   "paint": "Bodymat",
+   "credit": "\"Asti Stradale '89 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
+  },
+  {
+   "id": "kiri10",
+   "file": "cars/car_kiri10.glb",
+   "rotY": -1.5708,
+   "len": 4.4,
+   "tint": 3,
+   "paint": "Bodymat",
+   "credit": "\"Kiri '10 - Low poly model\" — Daniel Zhabotinsky (sketchfab.com/DanielZhabotinsky), CC BY 4.0"
   }
  ],
  "animals": {
