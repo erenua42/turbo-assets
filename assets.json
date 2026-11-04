@@ -475,7 +475,9 @@
   "Ağaç/çalı/kaya modelleri (Sketchfab, CC BY 4.0): \"Pine Tree [Game-ready]\" — Wenedi; \"POPLAR TREE 1\" — evseevdaniil0011; \"Trees (low-Poly, 4k Tris / Tree)\" — Sereib; \"Coniferous Forest Assets Pack\" — dariiiii; \"Low Poly Forest Tree Pack\" — 99.Miles; \"Bush models pack\" — lolipop_1707; \"Lowpoly Rocks - 1\" — norgeotloic",
   "Çimen dokusu: \"Grass Bushes (game ready asset)\" — apariciosilva3D (Sketchfab), CC BY 4.0",
   "Tarla dokuları: Poly Haven (withered_grass, sparse_grass, farm_soil), CC0",
-  "Ezan sesi: \"Call to Prayer Blue Mosque Istanbul\" — lindacass (Freesound) / Pixabay İçerik Lisansı"
+  "Ezan sesi: \"Call to Prayer Blue Mosque Istanbul\" — lindacass (Freesound) / Pixabay İçerik Lisansı",
+  "Ağaçlar: ez-tree — Daniel Greenheck (MIT), yaprak dokuları ez-tree deposundan; kabuk dokuları Bark001-003 — ambientCG (CC0)",
+  "Ekran efektleri: N8AO — N8python (CC0); EffectComposer, UnrealBloom, SMAA — three.js (MIT)"
  ],
  "trees": {
   "file": "trees/lowpoly_pack.glb",
@@ -493,11 +495,27 @@
  "roads": {
   "asphalt": {
    "2k": "tex/asphalt_ph_2k.jpg",
-   "1k": "tex/asphalt_ph_1k.jpg"
+   "1k": "tex/asphalt_ph_1k.jpg",
+   "nor": {
+    "1k": "tex/asphalt_nor_1k.jpg",
+    "2k": "tex/asphalt_nor_2k.jpg"
+   },
+   "rough": {
+    "1k": "tex/asphalt_rough_1k.jpg",
+    "2k": "tex/asphalt_rough_2k.jpg"
+   }
   },
   "walk": {
    "2k": "tex/walk_2k.jpg",
-   "1k": "tex/walk_1k.jpg"
+   "1k": "tex/walk_1k.jpg",
+   "nor": {
+    "1k": "tex/walk_nor_1k.jpg",
+    "2k": "tex/walk_nor_2k.jpg"
+   },
+   "rough": {
+    "1k": "tex/walk_rough_1k.jpg",
+    "2k": "tex/walk_rough_2k.jpg"
+   }
   }
  },
  "terrain": {
@@ -667,5 +685,6 @@
   "wheat": "tex/field_wheat.jpg",
   "green": "tex/field_green.jpg",
   "soil": "tex/field_soil.jpg"
- }
+ },
+ "skyHQ": "sky/quarry_01_2k.hdr"
 }
