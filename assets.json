@@ -477,7 +477,8 @@
   "Tarla dokuları: Poly Haven (withered_grass, sparse_grass, farm_soil), CC0",
   "Ezan sesi: \"Call to Prayer Blue Mosque Istanbul\" — lindacass (Freesound) / Pixabay İçerik Lisansı",
   "Ağaçlar: ez-tree — Daniel Greenheck (MIT), yaprak dokuları ez-tree deposundan; kabuk dokuları Bark001-003 — ambientCG (CC0)",
-  "Ekran efektleri: N8AO — N8python (CC0); EffectComposer, UnrealBloom, SMAA — three.js (MIT)"
+  "Ekran efektleri: N8AO — N8python (CC0); EffectComposer, UnrealBloom, SMAA — three.js (MIT)",
+  "Dokular: Brick Pavement 04 (kırmızı kaldırım) — Poly Haven (CC0)"
  ],
  "trees": {
   "file": "trees/lowpoly_pack.glb",
@@ -515,6 +516,18 @@
    "rough": {
     "1k": "tex/walk_rough_1k.jpg",
     "2k": "tex/walk_rough_2k.jpg"
+   }
+  },
+  "walkRed": {
+   "2k": "tex/redwalk_2k.jpg",
+   "1k": "tex/redwalk_1k.jpg",
+   "nor": {
+    "1k": "tex/redwalk_nor_1k.jpg",
+    "2k": "tex/redwalk_nor_2k.jpg"
+   },
+   "rough": {
+    "1k": "tex/redwalk_rough_1k.jpg",
+    "2k": "tex/redwalk_rough_2k.jpg"
    }
   }
  },
