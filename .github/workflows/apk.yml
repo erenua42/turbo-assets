@@ -1,0 +1,42 @@
+name: APK derle
+on:
+  push:
+    branches: [mrm-kumanda-apk]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Paketler
+        run: npm install
+      - name: Android projesi
+        run: |
+          npx cap add android
+          npx cap sync android
+          M=android/app/src/main/AndroidManifest.xml
+          # izinler: mikrofon, titreşim, internet; ses tanıma servisine erişim
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' $M
+          # yatay ekran, ekran açık kalsın
+          sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' $M
+          cat $M
+      - name: APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: APK adını düzelt
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk MRM-Kumanda.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: MRM-Kumanda, path: MRM-Kumanda.apk }
+      - name: İndirme linki (Release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mrm-kumanda-${{ github.run_number }}
+          name: MRM Kumanda ${{ github.run_number }}
+          target_commitish: mrm-kumanda-apk
+          files: MRM-Kumanda.apk

@@ -1,0 +1,7 @@
+{
+  "appId": "com.moderenmuhendislik.kumanda",
+  "appName": "MRM Kumanda",
+  "webDir": "www",
+  "server": { "androidScheme": "http", "cleartext": true },
+  "android": { "allowMixedContent": true }
+}
