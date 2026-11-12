@@ -487,6 +487,9 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
   <h3>Sesli asistan</h3>
   <div class="field"><input id="uName" type="text" placeholder="Adın (kontağı açınca seni karşılar)" aria-label="Adın"></div>
   <label class="check"><input type="checkbox" id="talk" checked> Araba konuşsun (sorulara sesli cevap, karşılama)</label>
+  <label class="check"><input type="checkbox" id="asistan" checked> <b>Asistan</b>: ne dersem yapay zekâ anlasın ve yapsın (internet lazım)</label>
+  <label style="display:block;font-size:12px;color:var(--muted);margin:4px 0 8px">Uygulamada (APK) asistan için Claude API anahtarı (claude.ai'deki linkte gerekmez):
+    <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off" style="width:100%;margin-top:4px"></label>
   <label class="check"><input type="checkbox" id="autoMic" checked> Mikrofon açık dursun (tuş kapalıyken <b>"Hey araba"</b> deyince dinler)</label>
   <label class="check"><input type="checkbox" id="ackBeep" checked> Komutu anlayınca "bip" ile onaylasın</label>
   <p>Sorabileceklerin: "hızım kaç", "devir kaç", "hangi vitesteyim", "motor ısındı mı", "kaç dakika sürdüm", "ne yapabilirsin".</p>
@@ -549,11 +552,11 @@ const S = { far:false, tavan:false, sig:0, parlak:80,
             voice:{g:0, d:0, until:0}, stopUntil:0, braking:false,
             key:0, temp:0, mode:1, load:0, scaled:false, smart:true, trim:0, sens:1, gauge:"dijital",
             exhaust:false, kid:false, pin:"", routes:[], rec:null, play:null, sweepUntil:0, sigArmed:false,
-            high:false, flash:false, park:false, show:null, engType:"hilux", hornType:"araba", sesV:0, marsSes:1, kont:"dir", egimHas:1, revBeep:true, pops:true, vib:true,
+            high:false, flash:false, park:false, show:null, engType:"hilux", hornType:"araba", sesV:0, marsSes:1, kont:"dir", egimHas:1, asistan:true, apiKey:"", revBeep:true, pops:true, vib:true,
             name:"", talk:true, autoMic:true, surekli:false, ackBeep:true, cmds:[], driveSec:0 };
 // ayarlar telefonda saklanır
 const CFG_KEYS = ["mode", "load", "scaled", "smart", "trim", "sens", "gauge", "parlak", "kid", "pin", "routes",
-                  "park", "engType", "hornType", "revBeep", "pops", "vib", "name", "talk", "ackBeep", "cmds", "autoMic", "surekli", "sesV", "marsSes", "kont", "egimHas"];
+                  "park", "engType", "hornType", "revBeep", "pops", "vib", "name", "talk", "ackBeep", "cmds", "autoMic", "surekli", "sesV", "marsSes", "kont", "egimHas", "asistan", "apiKey"];
 try { const c = JSON.parse(localStorage.getItem("mrm_kumanda") || "{}"); CFG_KEYS.forEach(k => { if (k in c) S[k] = c[k]; }); } catch (_) {}
 if (S.sesV !== 2) { S.engType = "hilux"; S.hornType = "araba"; S.sesV = 2; }   // gerçek seslere bir kerelik geçiş
 function saveCfg() { try { const c = {}; CFG_KEYS.forEach(k => c[k] = S[k]); localStorage.setItem("mrm_kumanda", JSON.stringify(c)); } catch (_) {} }
@@ -1084,10 +1087,12 @@ function segBind(id, key, conv) { document.querySelectorAll(`#${id} button`).for
   S[key] = conv(b.dataset.v); xUI(); modeUI(); gaugeUI(); saveCfg(); })); }
 segBind("segMode", "mode", Number); segBind("segLoad", "load", Number); segBind("segGauge", "gauge", String);
 segBind("segEng", "engType", String); segBind("segHorn", "hornType", String); segBind("segMars", "marsSes", Number); segBind("segKont", "kont", String);
-[["park", "park"], ["revBeep", "revBeep"], ["pops", "pops"], ["vib", "vib"], ["talk", "talk"], ["ackBeep", "ackBeep"], ["autoMic", "autoMic"]].forEach(([id, k]) =>
+[["park", "park"], ["revBeep", "revBeep"], ["pops", "pops"], ["vib", "vib"], ["talk", "talk"], ["ackBeep", "ackBeep"], ["autoMic", "autoMic"], ["asistan", "asistan"]].forEach(([id, k]) =>
   $("#" + id).addEventListener("change", e => { S[k] = e.target.checked; saveCfg();
     if (k === "autoMic") { if (S[k]) { micKapali = false; dinlemeyiAc(); } else if (listening) { listening = false; micUI(); try { rec && rec.stop(); } catch (_) {} } } }));
 $("#uName").addEventListener("change", e => { S.name = e.target.value.trim().slice(0, 20); saveCfg(); });
+$("#apiKey").value = S.apiKey || "";
+$("#apiKey").addEventListener("change", e => { S.apiKey = e.target.value.trim(); saveCfg(); said("", yzVar() ? "Asistan hazır" : "Anahtar kaydedildi"); });
 $("#showBtn").addEventListener("click", () => { $("#xdlg").close(); sov(); });
 // kendi komutların
 const ACTS = {
@@ -1120,7 +1125,11 @@ function runCustom(t) {
   return `"${c.p}" komutu`;
 }
 // konuşan araba
-function say(txt) { if (!S.talk || !window.speechSynthesis) return; try { const u = new SpeechSynthesisUtterance(txt); u.lang = "tr-TR"; u.rate = 1.05;
+const NATIF_TTS = (() => { try { return window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.Plugins && Capacitor.Plugins.TextToSpeech; } catch (_) { return null; } })();
+let konusuyor = false;
+function say(txt) { if (!S.talk) return;
+  if (NATIF_TTS) { konusuyor = true; NATIF_TTS.stop().catch(() => {}).then(() => NATIF_TTS.speak({ text: txt, lang: "tr-TR", rate: 1.05, pitch: 1.0, volume: 1.0 })).catch(() => {}).finally(() => { konusuyor = false; }); return; }
+  if (!window.speechSynthesis) return; try { const u = new SpeechSynthesisUtterance(txt); u.lang = "tr-TR"; u.rate = 1.05;
   speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (_) {} }
 $("#scaled").addEventListener("change", e => { S.scaled = e.target.checked; gaugeUI(); saveCfg(); });
 $("#smart").addEventListener("change", e => { S.smart = e.target.checked; saveCfg(); });
@@ -1133,7 +1142,7 @@ function xUI() {
   $("#scaled").checked = S.scaled; $("#smart").checked = S.smart;
   seg("segKont", S.kont); kontUygula();
   seg("segEng", S.engType); seg("segHorn", S.hornType); seg("segMars", String(S.marsSes)); snd.marsSes = S.marsSes; snd.setType(S.engType); snd.hornType = S.hornType;
-  ["park", "revBeep", "pops", "vib", "talk", "ackBeep", "autoMic"].forEach(k => $("#" + k).checked = S[k]); $("#uName").value = S.name; cUI();
+  ["park", "revBeep", "pops", "vib", "talk", "ackBeep", "autoMic", "asistan"].forEach(k => $("#" + k).checked = S[k]); $("#uName").value = S.name; cUI();
   $("#trim").value = S.trim; $("#trimO").textContent = (S.trim > 0 ? "+" : "") + S.trim + "°";
   $("#sens").value = Math.round(S.sens * 100); $("#sensO").textContent = "%" + Math.round(S.sens * 100);
   $("#br").value = S.parlak; $("#brO").textContent = "%" + S.parlak;
@@ -1266,7 +1275,7 @@ function komut(raw, yzden) {
   else if (has("sağ")) r = drive(0.35, 0.85, 1800, "Sağa dönüyor");
   else if (has("sol")) r = drive(0.35, -0.85, 1800, "Sola dönüyor");
   else if (has("ileri", "düz", "git", "gaz")) r = drive(0.45, 0, 3000, "İleri gidiyor");
-  if (!r && !yzden && YZ.sample) { paint(); yzSor(raw); return r; }
+  if (!r && !yzden && yzVar()) { paint(); yzSor(raw); return r; }
   paint(); said(raw, r || "Anlamadım, tekrar söyle"); if (r) buzz(15);
   if (S.ackBeep) { if (r) snd.beep(1400, 0.07, 0.06); else { snd.beep(420, 0.12, 0.07); setTimeout(() => snd.beep(320, 0.15, 0.07), 140); } }
   return r;
@@ -1332,6 +1341,16 @@ setInterval(() => {
 /* ================= YAPAY ZEKÂ (Claude) =================
    Kumanda anlamadığı cümleyi Claude'a sorar; Claude bilinen komutlara çevirir ve kısa cevap verir. */
 const YZ = { sample: null, dict: null, mesgul: false, gecmis: [] };
+const yzVar = () => !!(YZ.sample || (S.apiKey && /^sk-ant-/.test(S.apiKey)));
+async function yzJson(istem) {
+  if (YZ.sample) return YZ.sample.json(istem, { modelTier: "quick", cache: false });
+  const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": S.apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+    body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 300, messages: [{ role: "user", content: istem }] }) });
+  if (!r.ok) throw { code: r.status === 401 ? "anahtar" : r.status === 429 ? "rate_limited" : "api", message: "HTTP " + r.status };
+  const d = await r.json(), t = (d.content || []).map(c => c.text || "").join("");
+  const m = t.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : {};
+}
 (async () => { try { if (window.claude && claude.use) { YZ.sample = await claude.use("sample"); YZ.dict = await claude.use("dictation"); kurDikte(); } } catch (_) {} })();
 const YZ_KOMUTLAR = ["kontağı aç", "kontağı kapat", "farları yak", "farları kapat", "uzun far", "kısa far", "selektör", "sağ sinyal", "sol sinyal", "sinyali kapat",
   "dörtlü aç", "dörtlü kapat", "tavan ışığı aç", "tavan ışığı kapat", "bütün ışıkları aç", "bütün ışıkları kapat", "ışıkları kıs", "ışıkları parlak yap",
@@ -1340,27 +1359,31 @@ const YZ_KOMUTLAR = ["kontağı aç", "kontağı kapat", "farları yak", "farlar
 async function yzSor(raw) {
   if (YZ.mesgul) return; YZ.mesgul = true; said(raw, "Düşünüyorum…");
   const durum = `kontak:${["kapalı", "aksesuar", "açık"][S.key]}, motor:${S.engine ? "çalışıyor" : "kapalı"}, vites:${S.gear}, hız:%${Math.round(Math.abs(S.v) * 100)}, far:${S.far ? (S.high ? "uzun" : "kısa") : "kapalı"}, sinyal:${S.sig || "yok"}, mod:${MODES[S.mode]}, devir:${Math.round(S.rpm)}, motor ısısı:%${Math.round(S.temp * 100)}`;
-  const istem = `Sen "Moderen Mühendislik" (MRM) uzaktan kumandalı pikabın sesli asistanısın. Kullanıcı Türkçe konuşur, ses tanıma hatalı yazmış olabilir.
+  const gecmis = YZ.gecmis.slice(-8).map(g => `Kullanıcı: ${g[0]}\nSen: ${g[1]}`).join("\n");
+  const istem = `Sen Claude'sun; Eren'in kendi yaptığı "Moderen Mühendislik" (MRM) uzaktan kumandalı pikabının kumandasında onun asistanısın.
+Eren Türkçe konuşur, sana "kanka" der; sen de samimi, kısa ve sıcak konuş, "kanka" diyebilirsin. Ses tanıma kelimeleri yanlış yazmış olabilir, ne demek istediğini tahmin et.
+Arabayı sen kullanıyorsun: Eren ne isterse aşağıdaki komutlarla yap. Birden çok iş istediyse sırayla yaz (en fazla 6). Sohbet ya da soruysa komut yazma, sadece cevap ver.
 Arabanın şu anki durumu: ${durum}.
-Yapabileceğin komutlar (yalnızca bunları, aynen yaz): ${YZ_KOMUTLAR.join(" | ")}.
-Kullanıcının söylediği: "${raw}"
-Ne istediğini anla. Birden çok iş istediyse sırayla birden çok komut yaz (en fazla 5). Komut gerekmiyorsa (soru, sohbet) komutlar boş olsun.
-"cevap" kısa, samimi, Türkçe ve sesli okunacak bir cümle olsun (en fazla 15 kelime). Tehlikeli ya da yapılamayacak şeyi kibarca söyle.
+Kullanabileceğin komutlar (yalnızca bunlar, aynen yaz): ${YZ_KOMUTLAR.join(" | ")}.
+Kurallar: motor kapalıyken sürüş komutundan önce "kontağı aç" yaz. Tehlikeli, yapılamayacak ya da arabada olmayan bir şeyse kibarca söyle.
+${gecmis ? "Son konuşmalarınız:\n" + gecmis + "\n" : ""}Eren şimdi diyor ki: "${raw}"
+"cevap" sesli okunacak: Türkçe, en fazla 20 kelime, emoji yok.
 Yalnızca şu JSON'u döndür: {"komutlar": ["..."], "cevap": "..."}`;
   try {
-    const j = await YZ.sample.json(istem, { modelTier: "quick" });
+    const j = await yzJson(istem);
     const ks = (j && Array.isArray(j.komutlar) ? j.komutlar : []).filter(k => YZ_KOMUTLAR.includes(k)).slice(0, 5);
-    ks.forEach((k, i) => setTimeout(() => komut(k, true), i * 450));
-    const c = (j && j.cevap) || (ks.length ? "Tamam" : "Anlamadım");
-    setTimeout(() => { said(raw, c); say(c); }, ks.length * 450 + 50);
+    let gec = 0; ks.forEach(k => { setTimeout(() => komut(k, true), gec); gec += k === "kontağı aç" ? 2600 : 450; });
+    const c = (j && j.cevap) || (ks.length ? "Tamam kanka" : "Anlamadım kanka, bir daha söyler misin?");
+    YZ.gecmis.push([raw, c + (ks.length ? " [" + ks.join(", ") + "]" : "")]); if (YZ.gecmis.length > 12) YZ.gecmis.shift();
+    said(raw, c); say(c);
     if (S.ackBeep) snd.beep(1400, 0.07, 0.06);
   } catch (e) {
-    said(raw, e && e.code === "not_granted" ? "Yapay zekâya izin verilmedi" : e && e.code === "rate_limited" ? "Yapay zekâ biraz yoruldu, sonra tekrar dene" : "Anlamadım, tekrar söyle");
+    said(raw, e && e.code === "anahtar" ? "API anahtarı geçersiz (Ekstra'dan kontrol et)" : e && e.code === "not_granted" ? "Yapay zekâya izin verilmedi" : e && e.code === "rate_limited" ? "Yapay zekâ biraz yoruldu, sonra tekrar dene" : "Anlamadım, tekrar söyle");
     if (e && e.code === "not_granted") YZ.sample = null;
   } finally { YZ.mesgul = false; }
 }
 $("#typed").addEventListener("pointerdown", () => snd.wake());
-$("#typed").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.value.trim()) { komut(e.target.value); e.target.value = ""; e.target.blur(); } });
+$("#typed").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.value.trim()) { isle(e.target.value); e.target.value = ""; e.target.blur(); } });
 
 /* ================= SÜREKLİ DİNLEME ================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1379,11 +1402,15 @@ function uyanma(t) {
 }
 function uyan() { uyanik = 1; micUI(); buzz(15); try { snd.beep(990, 0.08, 0.06); } catch (_) {} said("", "Efendim? Komutu söyle…");
   clearTimeout(uyanikT); uyanikT = setTimeout(() => { uyanik = 0; micUI(); }, 6000); }
+function isle(t) {                                           // asistan açıksa her şey yapay zekâya; "dur" her zaman anında
+  if (/(^|\s)(dur|durdur|stop|fren)(\s|$)/i.test(t.toLocaleLowerCase("tr"))) { komut(t); return; }
+  if (yzVar() && S.asistan) yzSor(t); else komut(t); }
 function duyulan(t) {
-  if (S.surekli) { komut(t); return; }
-  if (uyanik) { uyanik = 0; clearTimeout(uyanikT); micUI(); komut(uyanma(t) ?? t); return; }
+  if (konusuyor) return;
+  if (S.surekli) { isle(t); return; }
+  if (uyanik) { uyanik = 0; clearTimeout(uyanikT); micUI(); isle(uyanma(t) ?? t); return; }
   const rest = uyanma(t); if (rest === null) return;          // kelime yok → yok say
-  if (rest) komut(rest); else uyan();
+  if (rest) isle(rest); else uyan();
 }
 let dikteAcik = false;
 function micHata(neden) {                                     // mikrofon açılamadı: nedenini göster, klavye mikrofonunu öner
