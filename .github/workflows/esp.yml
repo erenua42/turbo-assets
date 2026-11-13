@@ -24,6 +24,7 @@ jobs:
           ls -la out
           cp out/mrm_araba.ino.merged.bin MRM-Araba-ESP32.bin
           cp out/mrm_araba.ino.bin MRM-Araba-OTA.bin
+          cp out/mrm_araba.ino.elf MRM-Araba.elf
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: mrm-araba-esp32-${{ github.run_number }}
@@ -32,3 +33,4 @@ jobs:
           files: |
             MRM-Araba-ESP32.bin
             MRM-Araba-OTA.bin
+            MRM-Araba.elf

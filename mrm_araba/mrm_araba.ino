@@ -33,6 +33,7 @@ const bool  SERVO_TERS    = false;         // direksiyon ters dönüyorsa true y
 const int   SERVO_ORTA_US = 1500;          // servo ortası (mikrosaniye)
 const int   SERVO_ACI_US  = 450;           // ortadan sağa/sola en fazla
 const float SES_SEVIYE    = 0.6f;          // hoparlör sesi 0.0 – 1.0
+const bool  SES_ACIK      = false;         // arabadaki hoparlör (şimdilik kapalı; ses telefondan gelir)
 const uint32_t UYKU_MS    = 10UL * 60 * 1000;   // bu kadar kullanılmazsa uyur (10 dk)
 const uint32_t KOPMA_MS   = 500;           // bu kadar komut gelmezse araba durur
 
@@ -155,17 +156,19 @@ static void sesOrnek(void*) {
 }
 
 // =================== YARDIMCILAR ===================
+int pwmSon[40];
+void pwm(int pin, int duty) { if (pwmSon[pin] != duty) { pwmSon[pin] = duty; ledcWrite(pin, duty); } }   // aynı değeri tekrar yazma
 void motorYaz(float v) {                // v: -1..1
   if (MOTOR_TERS) v = -v;
   int duty = (int)(fabsf(v) * 255);
-  if (duty < 8) { ledcWrite(P_IN1, D.stop ? 255 : 0); ledcWrite(P_IN2, D.stop ? 255 : 0); return; }   // dur: frende fren, değilse boşta
-  if (v > 0) { ledcWrite(P_IN1, duty); ledcWrite(P_IN2, 0); }
-  else       { ledcWrite(P_IN1, 0);    ledcWrite(P_IN2, duty); }
+  if (duty < 8) { pwm(P_IN1, D.stop ? 255 : 0); pwm(P_IN2, D.stop ? 255 : 0); return; }   // dur: frende fren, değilse boşta
+  if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
+  else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
 }
 void servoYaz(int d) {                  // d: -100..100
   if (SERVO_TERS) d = -d;
   int us = SERVO_ORTA_US + d * SERVO_ACI_US / 100;
-  ledcWrite(P_SERVO, (uint32_t)us * 65535UL / 20000UL);
+  pwm(P_SERVO, (uint32_t)us * 65535UL / 20000UL);
 }
 inline int yuzde(int v) { return constrain(v, 0, 100) * 255 / 100; }
 
@@ -177,19 +180,19 @@ int8_t rssiOku() {
 }
 
 void isiklar(bool kopuk) {
-  if (uyuyor) { for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcWrite(p, 0); return; }
+  if (uyuyor) { for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) pwm(p, 0); return; }
   bool yan = (millis() / 333) % 2 == 0;                            // sinyal ESP32'de çakar
   static bool oncekiYan = false;
   char sig = kopuk ? '4' : D.sig;
   if (sig && yan != oncekiYan) S.tik = 60;                         // sinyal "tık"
   oncekiYan = yan;
   int p = yuzde(D.p);
-  ledcWrite(P_FAR, yuzde(D.far));
-  ledcWrite(P_TAVAN, D.tavan ? p : 0);
-  ledcWrite(P_STOP, yuzde(D.arka));
-  ledcWrite(P_SOL, (sig == 'L' || sig == '4') && yan ? p : 0);
-  ledcWrite(P_SAG, (sig == 'R' || sig == '4') && yan ? p : 0);
-  ledcWrite(P_GERI, D.geri ? p : 0);
+  pwm(P_FAR, yuzde(D.far));
+  pwm(P_TAVAN, D.tavan ? p : 0);
+  pwm(P_STOP, yuzde(D.arka));
+  pwm(P_SOL, (sig == 'L' || sig == '4') && yan ? p : 0);
+  pwm(P_SAG, (sig == 'R' || sig == '4') && yan ? p : 0);
+  pwm(P_GERI, D.geri ? p : 0);
 }
 
 void uyan() {
@@ -241,13 +244,15 @@ void wsOlay(uint8_t num, WStype_t tip, uint8_t* veri, size_t n) {
 void setup() {
   Serial.begin(115200);
   delay(200);
-  Serial.println("\nMRM · Moderen Mühendislik — araba açılıyor");
+  Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
   ledcAttach(P_IN1, 15000, 8); ledcAttach(P_IN2, 15000, 8);
   ledcAttach(P_SERVO, 50, 16);
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
-  ledcAttach(P_HOP, 78125, 8);
+  if (SES_ACIK) ledcAttach(P_HOP, 78125, 8);
+  for (int &v : pwmSon) v = -1;
   motorYaz(0); servoYaz(0);
+  Serial.println("1/4 PWM tamam"); Serial.flush();
 
   // WiFi: önce hotspot, her durumda kendi WiFi'si de açık
   WiFi.mode(WIFI_AP_STA);
@@ -262,6 +267,7 @@ void setup() {
     if (WiFi.status() == WL_CONNECTED) Serial.printf("\nHotspot bağlandı, arabanın adresi: %s\n", WiFi.localIP().toString().c_str());
     else Serial.println("\nHotspot bulunamadı, sadece kendi WiFi'si açık");
   }
+  Serial.println("2/4 WiFi tamam"); Serial.flush();
   MDNS.begin("mrm");                                    // mrm.local
   ArduinoOTA.setHostname("mrm-araba");
   ArduinoOTA.setPassword(OTA_SIFRE);
@@ -270,12 +276,12 @@ void setup() {
 
   ws.begin();
   ws.onEvent(wsOlay);
+  Serial.println("3/4 baglanti tamam"); Serial.flush();
 
   const esp_timer_create_args_t a = { .callback = &sesOrnek, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "ses" };
-  esp_timer_create(&a, &sesZamanlayici);
-  esp_timer_start_periodic(sesZamanlayici, 100);        // 10 kHz
+  if (SES_ACIK) { esp_timer_create(&a, &sesZamanlayici); esp_timer_start_periodic(sesZamanlayici, 100); }   // 10 kHz
   sonEtkinlik = millis();
-  Serial.println("Hazır. Kumandada 'Bağlan'a bas.");
+  Serial.println("4/4 Hazir. Kumandada Baglan'a bas."); Serial.flush();
 }
 
 // =================== DÖNGÜ ===================
