@@ -1,0 +1,34 @@
+name: ESP32 derle
+on:
+  push:
+    branches: [mrm-araba-esp32]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Kart ve kütüphaneler
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          arduino-cli lib install "WebSockets" "ArduinoJson"
+      - name: Derle
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32 --build-property "build.partitions=min_spiffs" --build-property "upload.maximum_size=1966080" --output-dir out mrm_araba
+          ls -la out
+          cp out/mrm_araba.ino.merged.bin MRM-Araba-ESP32.bin
+          cp out/mrm_araba.ino.bin MRM-Araba-OTA.bin
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mrm-araba-esp32-${{ github.run_number }}
+          name: MRM Araba ESP32 yazılımı ${{ github.run_number }}
+          target_commitish: mrm-araba-esp32
+          files: |
+            MRM-Araba-ESP32.bin
+            MRM-Araba-OTA.bin
