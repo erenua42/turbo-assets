@@ -20,6 +20,8 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include "esp_timer.h"
+#include <WebServer.h>
+#include <Update.h>
 
 // =================== AYARLAR (gerekirse burayı değiştir) ===================
 const char* HOTSPOT_ADI   = "";            // telefonunun hotspot adı (boşsa sadece kendi WiFi'sini açar)
@@ -29,16 +31,14 @@ const char* AP_SIFRE      = "mrm12345";    // en az 8 karakter
 const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
 
 const bool  MOTOR_TERS    = false;         // gaz verince geri gidiyorsa true yap
-const bool  SERVO_TERS    = false;         // direksiyon ters dönüyorsa true yap
-const int   SERVO_ORTA_US = 1500;          // servo ortası (mikrosaniye)
-const int   SERVO_ACI_US  = 450;           // ortadan sağa/sola en fazla
+const bool  DIREKSIYON_TERS = false;       // direksiyon ters dönüyorsa true yap
 const float SES_SEVIYE    = 0.6f;          // hoparlör sesi 0.0 – 1.0
 const bool  SES_ACIK      = false;         // arabadaki hoparlör (şimdilik kapalı; ses telefondan gelir)
 const uint32_t UYKU_MS    = 10UL * 60 * 1000;   // bu kadar kullanılmazsa uyur (10 dk)
 const uint32_t KOPMA_MS   = 500;           // bu kadar komut gelmezse araba durur
 
 // =================== PİNLER ===================
-const int P_IN1 = 25, P_IN2 = 26, P_SERVO = 13, P_HOP = 23;
+const int P_IN1 = 25, P_IN2 = 26, P_D1 = 27, P_D2 = 14, P_HOP = 23;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
 const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22;
 
 // =================== DURUM (telefondan gelir) ===================
@@ -56,6 +56,8 @@ struct Durum {
 } D;
 
 WebSocketsServer ws(81);
+WebServer web(80);                     // http://192.168.4.1 : telefondan güncelleme
+const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><body style="font-family:sans-serif;background:#111;color:#eee;padding:20px"><h2>MRM araba</h2><p>Yeni yazılım (MRM-Araba-OTA.bin) seç, Yükle'ye bas. Bitene kadar sayfayı kapatma.</p><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:18px">Yükle</button></form>)";
 int surucu = -1;                       // arabayı süren telefon (ilk bağlanan)
 uint32_t sonMesaj = 0, sonEtkinlik = 0, sonTelemetri = 0;
 bool uyuyor = false;
@@ -165,10 +167,18 @@ void motorYaz(float v) {                // v: -1..1
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
 }
+// direksiyon: 2 kablolu motor. Az çevirince hafif, çok çevirince tam güç;
+// dayanakta uzun süre tutulursa motor ısınmasın diye güç düşer.
+uint32_t dirBas = 0; int dirYon = 0;
 void servoYaz(int d) {                  // d: -100..100
-  if (SERVO_TERS) d = -d;
-  int us = SERVO_ORTA_US + d * SERVO_ACI_US / 100;
-  pwm(P_SERVO, (uint32_t)us * 65535UL / 20000UL);
+  if (DIREKSIYON_TERS) d = -d;
+  int a = abs(d);
+  if (a < 15) { pwm(P_D1, 0); pwm(P_D2, 0); dirYon = 0; return; }
+  int yon = d > 0 ? 1 : -1;
+  if (yon != dirYon) { dirYon = yon; dirBas = millis(); }
+  int duty = map(a, 15, 100, 150, 255);
+  if (millis() - dirBas > 1500) duty = duty * 6 / 10;
+  if (yon > 0) { pwm(P_D1, duty); pwm(P_D2, 0); } else { pwm(P_D1, 0); pwm(P_D2, duty); }
 }
 inline int yuzde(int v) { return constrain(v, 0, 100) * 255 / 100; }
 
@@ -247,7 +257,7 @@ void setup() {
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
   ledcAttach(P_IN1, 15000, 8); ledcAttach(P_IN2, 15000, 8);
-  ledcAttach(P_SERVO, 50, 16);
+  ledcAttach(P_D1, 15000, 8); ledcAttach(P_D2, 15000, 8);
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
   if (SES_ACIK) ledcAttach(P_HOP, 78125, 8);
   for (int &v : pwmSon) v = -1;
@@ -276,6 +286,18 @@ void setup() {
 
   ws.begin();
   ws.onEvent(wsOlay);
+  web.on("/", HTTP_GET, []() { web.send_P(200, "text/html", SAYFA); });
+  web.on("/guncelle", HTTP_POST, []() {
+    bool ok = !Update.hasError();
+    web.send(200, "text/html; charset=utf-8", ok ? "<h2>Tamam! Araba yeniden başlıyor.</h2>" : "<h2>HATA, tekrar dene.</h2>");
+    delay(600); if (ok) ESP.restart();
+  }, []() {
+    HTTPUpload& u = web.upload();
+    if (u.status == UPLOAD_FILE_START) { motorYaz(0); servoYaz(0); Serial.printf("Guncelleme: %s\n", u.filename.c_str()); Update.begin(UPDATE_SIZE_UNKNOWN); }
+    else if (u.status == UPLOAD_FILE_WRITE) Update.write(u.buf, u.currentSize);
+    else if (u.status == UPLOAD_FILE_END) { Update.end(true); Serial.printf("Guncelleme bitti: %u bayt\n", u.totalSize); }
+  });
+  web.begin();
   Serial.println("3/4 baglanti tamam"); Serial.flush();
 
   const esp_timer_create_args_t a = { .callback = &sesOrnek, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "ses" };
@@ -287,6 +309,7 @@ void setup() {
 // =================== DÖNGÜ ===================
 void loop() {
   ws.loop();
+  web.handleClient();
   ArduinoOTA.handle();
   uint32_t simdi = millis();
   bool kopuk = surucu < 0 || simdi - sonMesaj > KOPMA_MS;
