@@ -591,7 +591,8 @@ function warn(t) { const w = $("#warn"); w.textContent = t; w.classList.add("sho
 let saidT = 0;
 function said(raw, r) { const el = $("#said"); el.textContent = ""; el.classList.add("show"); clearTimeout(saidT); saidT = setTimeout(() => el.classList.remove("show"), 2600);
   if (raw) { const q = document.createElement("span"); q.textContent = `“${raw.trim()}” → `; el.append(q); }
-  const em = document.createElement("em"); em.textContent = r; el.append(em); }
+  const em = document.createElement("em"); em.textContent = r; el.append(em);
+  try { if (r) wsOlay("yazi", { t: String(r).slice(0, 80) }); } catch (_) {} }        // arabanın ekranına da yaz
 
 /* ================= SES (telefonda deneme; sonra arabadaki hoparlör) ================= */
 // Marş ve motor durma sesi: silindir sıkışmaları tek tek üretilir. Çalışan motor sesi: önceki ses.
@@ -1645,7 +1646,7 @@ setInterval(() => {
   const dOut = clamp(STEER * S.sens + S.trim / 45, -1, 1);            // direksiyon ayarı
   if (sendTick % 2 === 0 && ws && ws.readyState === 1) ws.send(JSON.stringify({
     g: Math.round(S.v * 100), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
-    vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType }));
+    vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, dinle: +listening, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType }));
 }, 25);
 
 /* ================= DEMO HARİTA ================= */
