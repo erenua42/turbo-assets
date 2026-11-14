@@ -31,6 +31,7 @@ const char* AP_ADI        = "MRM-ARABA";   // arabanın kendi WiFi'si
 const char* AP_SIFRE      = "mrm12345";    // en az 8 karakter
 const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
 
+const int   MOTOR_MIN     = 140;           // motorun kalkabildiği en düşük güç (0-255)
 const bool  MOTOR_TERS    = false;         // gaz verince geri gidiyorsa true yap
 const bool  DIREKSIYON_TERS = false;       // direksiyon ters dönüyorsa true yap
 int   sesAyar           = 2;             // hoparlör: 0 kapalı, 1 kısık, 2 orta, 3 yüksek (192.168.4.1 sayfasından)
@@ -208,8 +209,11 @@ int pwmSon[40];
 void pwm(int pin, int duty) { if (pwmSon[pin] != duty) { pwmSon[pin] = duty; ledcWrite(pin, duty); } }   // aynı değeri tekrar yazma
 void motorYaz(float v) {                // v: -1..1
   if (MOTOR_TERS) v = -v;
-  int duty = (int)(fabsf(v) * 255);
-  if (duty < 8) { pwm(P_IN1, 0); pwm(P_IN2, 0); return; }   // dur: iki uç da kapalı
+  float m = fabsf(v);
+  if (m < 0.03f) { pwm(P_IN1, 0); pwm(P_IN2, 0); return; }  // dur: iki uç da kapalı
+  // küçük gazda motor kalkamıyordu: en az %55 güçle başlar, gaz arttıkça tam güce çıkar
+  int duty = MOTOR_MIN + (int)((m - 0.03f) / 0.97f * (255 - MOTOR_MIN));
+  if (duty > 255) duty = 255;
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
 }
@@ -302,7 +306,7 @@ void setup() {
   delay(200);
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
-  for (int p : MPIN) ledcAttach(p, 15000, 8);
+  for (int p : MPIN) ledcAttach(p, 2000, 8);              // MX1508 düşük frekansta daha güçlü çalışır
   ayar.begin("mrm", false);
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
