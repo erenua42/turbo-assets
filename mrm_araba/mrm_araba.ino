@@ -31,7 +31,7 @@ const char* AP_ADI        = "MRM-ARABA";   // arabanın kendi WiFi'si
 const char* AP_SIFRE      = "mrm12345";    // en az 8 karakter
 const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
 
-const int   MOTOR_MIN     = 140;           // motorun kalkabildiği en düşük güç (0-255)
+const int   MOTOR_MIN     = 90;            // en düşük sürüş gücü (0-255); kalkışta kısa süre tam güç verilir
 const bool  MOTOR_TERS    = false;         // gaz verince geri gidiyorsa true yap
 const bool  DIREKSIYON_TERS = false;       // direksiyon ters dönüyorsa true yap
 int   sesAyar           = 2;             // hoparlör: 0 kapalı, 1 kısık, 2 orta, 3 yüksek (192.168.4.1 sayfasından)
@@ -210,9 +210,13 @@ void pwm(int pin, int duty) { if (pwmSon[pin] != duty) { pwmSon[pin] = duty; led
 void motorYaz(float v) {                // v: -1..1
   if (MOTOR_TERS) v = -v;
   float m = fabsf(v);
-  if (m < 0.03f) { pwm(P_IN1, 0); pwm(P_IN2, 0); return; }  // dur: iki uç da kapalı
-  // küçük gazda motor kalkamıyordu: en az %55 güçle başlar, gaz arttıkça tam güce çıkar
-  int duty = MOTOR_MIN + (int)((m - 0.03f) / 0.97f * (255 - MOTOR_MIN));
+  static uint32_t tekmeBitis = 0; static bool duruyordu = true; static int sonYon = 0;
+  if (m < 0.02f) { pwm(P_IN1, 0); pwm(P_IN2, 0); duruyordu = true; return; }  // dur: iki uç da kapalı
+  int yonS = v > 0 ? 1 : -1;
+  if (duruyordu || yonS != sonYon) { tekmeBitis = millis() + 120; duruyordu = false; sonYon = yonS; }   // kalkışta kısa tam güç
+  // gaz kadar güç: en az MOTOR_MIN, en çok 255
+  int duty = MOTOR_MIN + (int)((m - 0.02f) / 0.98f * (255 - MOTOR_MIN));
+  if (millis() < tekmeBitis) duty = 255;
   if (duty > 255) duty = 255;
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
