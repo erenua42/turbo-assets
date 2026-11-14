@@ -11,7 +11,7 @@
     GPIO25/26 MX1508 IN1/IN2 (motor)   GPIO13 servo
     GPIO16 far   GPIO17 tavan   GPIO18 stop/arka lamba
     GPIO19 sol sinyal   GPIO21 sağ sinyal   GPIO22 geri lambası
-    GPIO23 hoparlör (ULN2003 OUT7, 22Ω direnç ile +5V)
+    GPIO23 hoparlör (2. ULN2003 IN3 → çıkış C; hoparlörün öbür ucu +5V)
 */
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -33,8 +33,10 @@ const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
 
 const bool  MOTOR_TERS    = false;         // gaz verince geri gidiyorsa true yap
 const bool  DIREKSIYON_TERS = false;       // direksiyon ters dönüyorsa true yap
-const float SES_SEVIYE    = 0.6f;          // hoparlör sesi 0.0 – 1.0
-const bool  SES_ACIK      = false;         // arabadaki hoparlör (şimdilik kapalı; ses telefondan gelir)
+int   sesAyar           = 2;             // hoparlör: 0 kapalı, 1 kısık, 2 orta, 3 yüksek (192.168.4.1 sayfasından)
+float SES_SEVIYE        = 0.4f;          // sesAyar'a göre ayarlanır (dirençsiz hoparlör için en çok 0.55)
+bool  SES_ACIK          = false;
+bool  sesCokme          = false;         // ses açıkken kart çöktüyse ses kendiliğinden kapanır
 const uint32_t UYKU_MS    = 10UL * 60 * 1000;   // bu kadar kullanılmazsa uyur (10 dk)
 const uint32_t KOPMA_MS   = 500;           // bu kadar komut gelmezse araba durur
 
@@ -69,7 +71,8 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">%KUTULAR%</div><br>
 <button style="padding:14px;font-size:18px;width:100%;background:#fb0;border:0;border-radius:10px">KAYDET</button></form>
 <p id=m style="color:#fb0"></p>
-<h3>2) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
+<h3>2) Hoparlor</h3><p>%SESDURUM%</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">%SESTUS%</div><p style="color:#999">Secince araba yeniden baslar.</p>
+<h3>3) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
 <script>function t(p){fetch('/t?p='+p);document.getElementById('m').textContent='Kablo '+p+' calisiyor...';setTimeout(()=>document.getElementById('m').textContent='',900)}</script>)";
 String sayfaYap() {
   String h = FPSTR(SAYFA), k;
@@ -80,7 +83,12 @@ String sayfaYap() {
     for (int j = 0; j < 4; j++) k += String("<option value=") + kd[j] + (kd[j] == su ? " selected>" : ">") + ad[j] + "</option>";
     k += "</select></div>";
   }
-  h.replace("%KUTULAR%", k); return h;
+  h.replace("%KUTULAR%", k);
+  const char* sa[4] = {"KAPALI", "KISIK", "ORTA", "YUKSEK"}; String t;
+  for (int i = 0; i < 4; i++) t += String("<a href=/ses?v=") + i + " style='display:block;text-align:center;padding:12px 4px;border-radius:10px;text-decoration:none;font-size:15px;" + (i == sesAyar ? "background:#fb0;color:#000'>" : "background:#333;color:#eee'>") + sa[i] + "</a>";
+  h.replace("%SESTUS%", t);
+  h.replace("%SESDURUM%", sesCokme ? "<b style='color:#f55'>Ses acikken kart yeniden basladi, ses KAPATILDI.</b>" : String("Su an: ") + sa[sesAyar]);
+  return h;
 }
 int surucu = -1;                       // arabayı süren telefon (ilk bağlanan)
 uint32_t sonMesaj = 0, sonEtkinlik = 0, sonTelemetri = 0;
@@ -101,7 +109,7 @@ struct Ses {
   float nLp = 0, nLp2 = 0, hLp = 0, cLp = 0, zarf = 0, kornaT = 0, thump = 0;
   uint32_t rnd = 22222; int say = 0;
 } S;
-esp_timer_handle_t sesZamanlayici;
+esp_timer_handle_t sesZamanlayici; bool sesDeneme = false;
 
 static inline float gurultu() { S.rnd ^= S.rnd << 13; S.rnd ^= S.rnd >> 17; S.rnd ^= S.rnd << 5; return (int32_t)S.rnd / 2147483648.0f; }
 static inline float yumusakKes(float x) { if (x > 3) return 1; if (x < -3) return -1; return x * (27 + x * x) / (27 + 9 * x * x); }
@@ -111,7 +119,7 @@ static void lpAyarla(float fc, float q) {          // biquad alçak geçiren
   S.b0 = (1 - c) / 2 / a0; S.b1 = (1 - c) / a0; S.b2 = S.b0; S.a1 = -2 * c / a0; S.a2 = (1 - al) / a0;
 }
 
-static void sesOrnek(void*) {
+static uint8_t sesUret() {
   float rpm = S.rpm, yuk = S.yuk; int tip = S.tip;
   float f, r2, r3, lp, kaz, nK;                    // motor türüne göre
   switch (tip) {
@@ -178,7 +186,21 @@ static void sesOrnek(void*) {
   out = fminf(fmaxf(out, -1.0f), 1.0f);
   int duty = (int)(amp + out * amp);
   duty = constrain(duty, 0, 255);
-  ledcWrite(P_HOP, uyuyor ? 0 : duty);
+  return uyuyor ? 0 : (uint8_t)duty;
+}
+// Sesi ayrı bir görev hesaplar, tampona yazar; 10 kHz zamanlayıcı sadece tampondan okuyup hoparlöre verir.
+static uint8_t sesTampon[512]; volatile uint16_t sesYaz = 0, sesOku = 0;
+static void sesGorev(void*) {
+  for (;;) {
+    int n = 0;
+    while ((uint16_t)((sesYaz + 1) & 511) != sesOku && n < 300) { sesTampon[sesYaz] = sesUret(); sesYaz = (sesYaz + 1) & 511; n++; }
+    vTaskDelay(pdMS_TO_TICKS(4));
+  }
+}
+static void sesCikis(void*) {
+  static int son = 0, yazilan = -1;
+  if (sesOku != sesYaz) { son = sesTampon[sesOku]; sesOku = (sesOku + 1) & 511; }
+  if (son != yazilan) { yazilan = son; ledcWrite(P_HOP, son); }
 }
 
 // =================== YARDIMCILAR ===================
@@ -285,7 +307,18 @@ void setup() {
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
+  { // ses ayarı + çökme koruması: ses açıldıktan hemen sonra kart çökerse ses kendiliğinden kapanır
+    sesAyar = constrain(ayar.getInt("ses", 2), 0, 3);
+    esp_reset_reason_t r = esp_reset_reason();
+    bool kotu = r == ESP_RST_PANIC || r == ESP_RST_INT_WDT || r == ESP_RST_TASK_WDT || r == ESP_RST_WDT || r == ESP_RST_BROWNOUT;
+    sesCokme = ayar.getInt("sc", 0) != 0;
+    if (kotu && ayar.getInt("sd", 0) == 1 && sesAyar > 0) { sesAyar = 0; sesCokme = true; ayar.putInt("ses", 0); ayar.putInt("sc", 1); Serial.println("Ses acikken cokme oldu: ses kapatildi"); }
+    if (ayar.getInt("sd", 0) != 0) ayar.putInt("sd", 0);
+    static const float SV[4] = {0, 0.22f, 0.4f, 0.55f};
+    SES_SEVIYE = SV[sesAyar]; SES_ACIK = sesAyar > 0;
+  }
   if (SES_ACIK) ledcAttach(P_HOP, 78125, 8);
+  else { pinMode(P_HOP, OUTPUT); digitalWrite(P_HOP, LOW); }       // ses kapalıyken hoparlörden akım geçmesin
   for (int &v : pwmSon) v = -1;
   motorYaz(0); servoYaz(0);
   Serial.println("1/4 PWM tamam"); Serial.flush();
@@ -322,6 +355,12 @@ void setup() {
       ayar.putInt("i", P_IN1); ayar.putInt("g", P_IN2); ayar.putInt("r", P_D1); ayar.putInt("l", P_D2); }
     web.send(200, "text/html; charset=utf-8", ok ? "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi.</h2><a style='color:#fb0' href=/>Geri</a>" : "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>HATA: 4 kutuda 4 farkli sey secili olmali.</h2><a style='color:#fb0' href=/>Geri</a>");
   });
+  web.on("/ses", HTTP_GET, []() {
+    int v = constrain(web.arg("v").toInt(), 0, 3);
+    ayar.putInt("ses", v); ayar.putInt("sc", 0); ayar.putInt("sd", 0);
+    web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='6;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2>");
+    delay(500); motorYaz(0); servoYaz(0); ESP.restart();
+  });
   web.on("/guncelle", HTTP_POST, []() {
     bool ok = !Update.hasError();
     web.send(200, "text/html; charset=utf-8", ok ? "<h2>Tamam! Araba yeniden başlıyor.</h2>" : "<h2>HATA, tekrar dene.</h2>");
@@ -335,8 +374,12 @@ void setup() {
   web.begin();
   Serial.println("3/4 baglanti tamam"); Serial.flush();
 
-  const esp_timer_create_args_t a = { .callback = &sesOrnek, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "ses" };
-  if (SES_ACIK) { esp_timer_create(&a, &sesZamanlayici); esp_timer_start_periodic(sesZamanlayici, 100); }   // 10 kHz
+  const esp_timer_create_args_t a = { .callback = &sesCikis, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "ses", .skip_unhandled_events = true };
+  if (SES_ACIK) {
+    ayar.putInt("sd", 1); sesDeneme = true;                         // "ses deneniyor" işareti; 20 sn sorunsuz çalışınca silinir
+    xTaskCreatePinnedToCore(sesGorev, "sesG", 6144, nullptr, 2, nullptr, 1);
+    esp_timer_create(&a, &sesZamanlayici); esp_timer_start_periodic(sesZamanlayici, 100);   // 10 kHz
+  }
   sonEtkinlik = millis();
   Serial.println("4/4 Hazir. Kumandada Baglan'a bas."); Serial.flush();
 }
@@ -347,6 +390,7 @@ void loop() {
   web.handleClient();
   ArduinoOTA.handle();
   uint32_t simdi = millis();
+  if (sesDeneme && simdi > 20000) { sesDeneme = false; ayar.putInt("sd", 0); }
   bool kopuk = surucu < 0 || simdi - sonMesaj > KOPMA_MS;
 
   // sinyal gücü: zayıfsa hız sınırlanır
