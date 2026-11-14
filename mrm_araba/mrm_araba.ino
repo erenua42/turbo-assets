@@ -22,6 +22,7 @@
 #include "esp_timer.h"
 #include <WebServer.h>
 #include <Update.h>
+#include <Preferences.h>
 
 // =================== AYARLAR (gerekirse burayı değiştir) ===================
 const char* HOTSPOT_ADI   = "";            // telefonunun hotspot adı (boşsa sadece kendi WiFi'sini açar)
@@ -38,7 +39,11 @@ const uint32_t UYKU_MS    = 10UL * 60 * 1000;   // bu kadar kullanılmazsa uyur 
 const uint32_t KOPMA_MS   = 500;           // bu kadar komut gelmezse araba durur
 
 // =================== PİNLER ===================
-const int P_IN1 = 25, P_IN2 = 26, P_D1 = 27, P_D2 = 14, P_HOP = 23;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
+const int MPIN[4] = {25, 26, 27, 14};     // motor kartına giden 4 kablo
+int P_IN1 = 25, P_IN2 = 26, P_D1 = 27, P_D2 = 14;   // ileri, geri, sağ, sol (192.168.4.1 sayfasından değiştirilebilir)
+const int P_HOP = 23;
+Preferences ayar;
+int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
 const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22;
 
 // =================== DURUM (telefondan gelir) ===================
@@ -57,7 +62,26 @@ struct Durum {
 
 WebSocketsServer ws(81);
 WebServer web(80);                     // http://192.168.4.1 : telefondan güncelleme
-const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width"><body style="font-family:sans-serif;background:#111;color:#eee;padding:20px"><h2>MRM araba</h2><p>Yeni yazılım (MRM-Araba-OTA.bin) seç, Yükle'ye bas. Bitene kadar sayfayı kapatma.</p><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:18px">Yükle</button></form>)";
+const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><body style="font-family:sans-serif;background:#111;color:#eee;padding:16px;max-width:520px;margin:auto">
+<h2>MRM araba ayar</h2>
+<h3>1) Kablo testi</h3><p>Tekerleri havaya kaldir. Her tusa bas, arabanin ne yaptigina bak, altindaki kutudan sec.</p>
+<form action=/kaydet>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">%KUTULAR%</div><br>
+<button style="padding:14px;font-size:18px;width:100%;background:#fb0;border:0;border-radius:10px">KAYDET</button></form>
+<p id=m style="color:#fb0"></p>
+<h3>2) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
+<script>function t(p){fetch('/t?p='+p);document.getElementById('m').textContent='Kablo '+p+' calisiyor...';setTimeout(()=>document.getElementById('m').textContent='',900)}</script>)";
+String sayfaYap() {
+  String h = FPSTR(SAYFA), k;
+  for (int i = 0; i < 4; i++) {
+    int p = MPIN[i]; char su = p == P_IN1 ? 'i' : p == P_IN2 ? 'g' : p == P_D1 ? 'r' : 'l';
+    k += "<div style='background:#222;padding:10px;border-radius:10px'><button type=button onclick=t(" + String(p) + ") style='padding:14px;font-size:18px;width:100%'>TEST " + String(i + 1) + "</button><br><br><select name=a" + String(p) + " style='font-size:17px;width:100%;padding:8px'>";
+    const char* ad[4] = {"ILERI gitti", "GERI gitti", "SAGA dondu", "SOLA dondu"}; const char kd[4] = {'i', 'g', 'r', 'l'};
+    for (int j = 0; j < 4; j++) k += String("<option value=") + kd[j] + (kd[j] == su ? " selected>" : ">") + ad[j] + "</option>";
+    k += "</select></div>";
+  }
+  h.replace("%KUTULAR%", k); return h;
+}
 int surucu = -1;                       // arabayı süren telefon (ilk bağlanan)
 uint32_t sonMesaj = 0, sonEtkinlik = 0, sonTelemetri = 0;
 bool uyuyor = false;
@@ -256,8 +280,10 @@ void setup() {
   delay(200);
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
-  ledcAttach(P_IN1, 15000, 8); ledcAttach(P_IN2, 15000, 8);
-  ledcAttach(P_D1, 15000, 8); ledcAttach(P_D2, 15000, 8);
+  for (int p : MPIN) ledcAttach(p, 15000, 8);
+  ayar.begin("mrm", false);
+  { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
+    if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
   if (SES_ACIK) ledcAttach(P_HOP, 78125, 8);
   for (int &v : pwmSon) v = -1;
@@ -286,7 +312,16 @@ void setup() {
 
   ws.begin();
   ws.onEvent(wsOlay);
-  web.on("/", HTTP_GET, []() { web.send_P(200, "text/html", SAYFA); });
+  web.on("/", HTTP_GET, []() { web.send(200, "text/html; charset=utf-8", sayfaYap()); });
+  web.on("/t", HTTP_GET, []() { int p = web.arg("p").toInt(); for (int q : MPIN) if (q == p) { testPin = p; testBitis = millis() + 700; } web.send(200, "text/plain", "ok"); });
+  web.on("/kaydet", HTTP_GET, []() {
+    int yeni[4] = {-1, -1, -1, -1};                                  // i, g, r, l
+    for (int p : MPIN) { String v = web.arg("a" + String(p)); int k = v == "i" ? 0 : v == "g" ? 1 : v == "r" ? 2 : v == "l" ? 3 : -1; if (k >= 0 && yeni[k] < 0) yeni[k] = p; }
+    bool ok = yeni[0] >= 0 && yeni[1] >= 0 && yeni[2] >= 0 && yeni[3] >= 0;
+    if (ok) { P_IN1 = yeni[0]; P_IN2 = yeni[1]; P_D1 = yeni[2]; P_D2 = yeni[3];
+      ayar.putInt("i", P_IN1); ayar.putInt("g", P_IN2); ayar.putInt("r", P_D1); ayar.putInt("l", P_D2); }
+    web.send(200, "text/html; charset=utf-8", ok ? "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi.</h2><a style='color:#fb0' href=/>Geri</a>" : "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>HATA: 4 kutuda 4 farkli sey secili olmali.</h2><a style='color:#fb0' href=/>Geri</a>");
+  });
   web.on("/guncelle", HTTP_POST, []() {
     bool ok = !Update.hasError();
     web.send(200, "text/html; charset=utf-8", ok ? "<h2>Tamam! Araba yeniden başlıyor.</h2>" : "<h2>HATA, tekrar dene.</h2>");
@@ -328,8 +363,8 @@ void loop() {
   float adim = 0.03f;                                   // döngü başına en fazla değişim
   motorCikis += constrain(hedef - motorCikis, -adim, adim);
   if (kopuk && fabsf(motorCikis) > 0) motorCikis *= 0.8f;
-  motorYaz(motorCikis);
-  servoYaz(kopuk ? 0 : D.d);
+  if (millis() < testBitis) { for (int p : MPIN) pwm(p, p == testPin ? 255 : 0); }      // kablo testi
+  else { motorYaz(motorCikis); servoYaz(kopuk ? 0 : D.d); }
   isiklar(kopuk && surucu >= 0);
 
   // ses motoruna aktar
