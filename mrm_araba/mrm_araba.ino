@@ -48,6 +48,7 @@ const int MPIN[4] = {25, 26, 27, 14};     // motor kartına giden 4 kablo
 int P_IN1 = 25, P_IN2 = 26, P_D1 = 27, P_D2 = 14;   // ileri, geri, sağ, sol (192.168.4.1 sayfasından değiştirilebilir)
 const int P_HOP = 23;
 Preferences ayar;
+U8G2* oled = nullptr; int ekranTip = 0;           // ekran: 0 SSD1306 (0.96"), 1 SH1106 (1.3"), 2 yok
 int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
 const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22;
 
@@ -275,7 +276,6 @@ void uyan() {
 // =================== TELEFONDAN GELEN ===================
 // =================== EKRAN (0.96" / 1.3" OLED, SDA=32 SCL=33) ===================
 const int P_SDA = 32, P_SCL = 33;
-U8G2* oled = nullptr; int ekranTip = 0;           // 0: SSD1306 (0.96"), 1: SH1106 (1.3"), 2: ekran yok
 char ekranYazi[84] = ""; volatile uint32_t yaziBitis = 0;
 static void trAscii(const char* g, char* c, int n) {     // Türkçe harfleri ekranın yazabileceği harflere çevir
   int k = 0;
