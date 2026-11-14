@@ -187,7 +187,7 @@ void pwm(int pin, int duty) { if (pwmSon[pin] != duty) { pwmSon[pin] = duty; led
 void motorYaz(float v) {                // v: -1..1
   if (MOTOR_TERS) v = -v;
   int duty = (int)(fabsf(v) * 255);
-  if (duty < 8) { pwm(P_IN1, D.stop ? 255 : 0); pwm(P_IN2, D.stop ? 255 : 0); return; }   // dur: frende fren, değilse boşta
+  if (duty < 8) { pwm(P_IN1, 0); pwm(P_IN2, 0); return; }   // dur: iki uç da kapalı
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
 }
