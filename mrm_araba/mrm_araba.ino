@@ -23,6 +23,8 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <Preferences.h>
+#include <Wire.h>
+#include <U8g2lib.h>
 
 // =================== AYARLAR (gerekirse burayı değiştir) ===================
 const char* HOTSPOT_ADI   = "";            // telefonunun hotspot adı (boşsa sadece kendi WiFi'sini açar)
@@ -58,6 +60,7 @@ struct Durum {
   int   far = 0, arka = 0, p = 80;     // ışık seviyeleri 0..100
   bool  tavan = false, geri = false, stop = false, korna = false, egz = false;
   char  sig = 0;                       // 0, 'L', 'R', '4'
+  bool  dinle = false;                 // telefon mikrofonu dinliyor mu
   char  vites = 'N';
   int   motorTip = 0;                  // 0 dizel, 1 v8, 2 traktör, 3 elektrikli
   int   kornaTip = 0;                  // 0 normal, 1 kamyon, 2 tiz, 3 melodi
@@ -73,7 +76,8 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <button style="padding:14px;font-size:18px;width:100%;background:#fb0;border:0;border-radius:10px">KAYDET</button></form>
 <p id=m style="color:#fb0"></p>
 <h3>2) Hoparlor</h3><p>%SESDURUM%</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">%SESTUS%</div><p style="color:#999">Secince araba yeniden baslar.</p>
-<h3>3) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
+<h3>3) Ekran</h3><p>%EKDURUM%</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">%EKTUS%</div>
+<h3>4) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
 <script>function t(p){fetch('/t?p='+p);document.getElementById('m').textContent='Kablo '+p+' calisiyor...';setTimeout(()=>document.getElementById('m').textContent='',900)}</script>)";
 String sayfaYap() {
   String h = FPSTR(SAYFA), k;
@@ -88,6 +92,10 @@ String sayfaYap() {
   const char* sa[4] = {"KAPALI", "KISIK", "ORTA", "YUKSEK"}; String t;
   for (int i = 0; i < 4; i++) t += String("<a href=/ses?v=") + i + " style='display:block;text-align:center;padding:12px 4px;border-radius:10px;text-decoration:none;font-size:15px;" + (i == sesAyar ? "background:#fb0;color:#000'>" : "background:#333;color:#eee'>") + sa[i] + "</a>";
   h.replace("%SESTUS%", t);
+  const char* ea[3] = {"0.96 inc", "1.3 inc", "YOK"}; String e;
+  for (int i = 0; i < 3; i++) e += String("<a href=/ekran?v=") + i + " style='display:block;text-align:center;padding:12px 4px;border-radius:10px;text-decoration:none;font-size:15px;" + (i == ekranTip ? "background:#fb0;color:#000'>" : "background:#333;color:#eee'>") + ea[i] + "</a>";
+  h.replace("%EKTUS%", e);
+  h.replace("%EKDURUM%", ekranTip == 2 ? String("Ekran kapali.") : oled ? String("Ekran calisiyor. Goruntu bozuksa digerini sec.") : String("<b style='color:#f55'>Ekran bulunamadi.</b> GND, VCC(3.3V), SCL=33, SDA=32 kablolarina bak."));
   h.replace("%SESDURUM%", sesCokme ? "<b style='color:#f55'>Ses acikken kart yeniden basladi, ses KAPATILDI.</b>" : String("Su an: ") + sa[sesAyar]);
   return h;
 }
@@ -265,6 +273,100 @@ void uyan() {
 }
 
 // =================== TELEFONDAN GELEN ===================
+// =================== EKRAN (0.96" / 1.3" OLED, SDA=32 SCL=33) ===================
+const int P_SDA = 32, P_SCL = 33;
+U8G2* oled = nullptr; int ekranTip = 0;           // 0: SSD1306 (0.96"), 1: SH1106 (1.3"), 2: ekran yok
+char ekranYazi[84] = ""; volatile uint32_t yaziBitis = 0;
+static void trAscii(const char* g, char* c, int n) {     // Türkçe harfleri ekranın yazabileceği harflere çevir
+  int k = 0;
+  for (const unsigned char* p = (const unsigned char*)g; *p && k < n - 1; ) {
+    if (*p < 0x80) { c[k++] = *p++; continue; }
+    unsigned int u = 0; int l = (*p >= 0xF0) ? 4 : (*p >= 0xE0) ? 3 : 2;
+    u = *p & (0xFF >> (l + 1)); for (int i = 1; i < l && p[i]; i++) u = (u << 6) | (p[i] & 0x3F);
+    for (int i = 0; i < l && *p; i++) p++;
+    char r = '?';
+    switch (u) { case 0xE7: r='c'; break; case 0xC7: r='C'; break; case 0x11F: r='g'; break; case 0x11E: r='G'; break;
+      case 0x131: r='i'; break; case 0x130: r='I'; break; case 0xF6: r='o'; break; case 0xD6: r='O'; break;
+      case 0x15F: r='s'; break; case 0x15E: r='S'; break; case 0xFC: r='u'; break; case 0xDC: r='U'; break;
+      case 0x2026: r='.'; break; case 0x201C: case 0x201D: r='"'; break; case 0x2192: r='>'; break; default: r=' '; }
+    c[k++] = r;
+  }
+  c[k] = 0;
+}
+void ekranYaziKoy(const char* t) { trAscii(t, ekranYazi, sizeof ekranYazi); yaziBitis = millis() + 4000; }
+// iki göz: dx/dy bakış yönü, h göz yüksekliği (kırpma), mod: 0 normal, 1 mutlu, 2 uykulu, 3 şaşkın, 4 kızgın
+static void gozCiz(int dx, int dy, int h, int mod) {
+  const int W = 30, cy = 26;
+  for (int i = 0; i < 2; i++) {
+    int cx = (i ? 88 : 40) + dx, y = cy + dy;
+    if (mod == 2) { oled->drawBox(cx - W / 2, y + 6, W, 3); continue; }                   // uykulu: çizgi
+    int hh = mod == 3 ? 34 : h;
+    int ww = mod == 3 ? 34 : W;
+    oled->drawRBox(cx - ww / 2, y - hh / 2 + 8, ww, max(hh, 3), min(8, max(hh, 3) / 2));
+    if (mod == 1) { oled->setDrawColor(0); oled->drawDisc(cx, y + hh / 2 + 10, 17); oled->setDrawColor(1); }   // mutlu: alt yarım ay
+    if (mod == 4) { oled->setDrawColor(0); oled->drawTriangle(cx - 18, y - 12, cx + 18, y - 12, i ? cx - 18 : cx + 18, y + 4); oled->setDrawColor(1); }  // kızgın kaş
+  }
+}
+void ekranGorev(void*) {
+  uint32_t kirpSonra = millis() + 2500, bakSonra = 0; int bakX = 0, bakY = 0, hedefX = 0, hedefY = 0;
+  // açılış: logo
+  oled->clearBuffer(); oled->setFont(u8g2_font_logisoso28_tr); oled->drawStr(30, 40, "MRM");
+  oled->setFont(u8g2_font_6x12_tr); oled->drawStr(10, 58, "Moderen Muhendislik"); oled->sendBuffer();
+  vTaskDelay(pdMS_TO_TICKS(1800));
+  for (;;) {
+    uint32_t t = millis();
+    bool bagli = surucu >= 0 && t - sonMesaj < 1500;
+    oled->clearBuffer();
+    // göz yönü: direksiyona bak, yoksa ara sıra etrafa bak
+    if (bagli && D.motor) { hedefX = constrain(D.d, -100, 100) * 14 / 100; hedefY = D.g < -5 ? 6 : 0; }
+    else if (t > bakSonra) { bakSonra = t + 1500 + (esp_random() % 3000); hedefX = (int)(esp_random() % 25) - 12; hedefY = (int)(esp_random() % 9) - 4; }
+    bakX += (hedefX - bakX) / 3; bakY += (hedefY - bakY) / 3;
+    int h = 30;                                                               // göz kırpma
+    if (t > kirpSonra) { int k = (int)(t - kirpSonra); if (k < 80) h = 30 - k * 28 / 80; else if (k < 160) h = 2 + (k - 80) * 28 / 80; else kirpSonra = t + 2500 + (esp_random() % 3500); }
+    if (h < 2) h = 2;
+    int mod = 0;
+    if (uyuyor || !bagli) mod = 2;
+    else if (D.korna) mod = 4;
+    else if (D.dinle && !D.motor) mod = 3;
+    else if (D.motor && abs(D.g) > 45) mod = 1;
+    bool yaziVar = t < yaziBitis && ekranYazi[0];
+    if (yaziVar) {                                                            // asistanın cevabı
+      oled->setFont(u8g2_font_6x12_tr);
+      int len = strlen(ekranYazi), sat = 0;
+      for (int i = 0; i < len && sat < 5; i += 21, sat++) { char b[22]; strncpy(b, ekranYazi + i, 21); b[21] = 0; oled->drawStr(1, 11 + sat * 12, b); }
+    } else {
+      gozCiz(bakX, bakY, h, mod);
+      oled->setFont(u8g2_font_5x8_tr);
+      if (mod == 2) { oled->drawStr(100, 12, "z"); oled->drawStr(108, 7, "Z"); oled->drawStr(2, 62, bagli ? "uyku" : "MRM-ARABA bekleniyor"); }
+      else if (D.dinle && D.dinle) { oled->drawStr(2, 62, "dinliyorum..."); }
+      // alt çubuk: vites + hız
+      if (bagli && D.motor) {
+        char v[8]; snprintf(v, sizeof v, "%c", D.vites ? D.vites : 'N'); oled->setFont(u8g2_font_6x12_tr); oled->drawStr(2, 63, v);
+        int w = abs(constrain(D.g, -100, 100)) * 110 / 100; oled->drawFrame(14, 56, 112, 7); oled->drawBox(15, 57, w, 5);
+      }
+      // sinyal okları
+      bool yan = (t / 333) % 2;
+      if (bagli && yan && (D.sig == 'L' || D.sig == '4')) oled->drawTriangle(0, 26, 8, 18, 8, 34);
+      if (bagli && yan && (D.sig == 'R' || D.sig == '4')) oled->drawTriangle(127, 26, 119, 18, 119, 34);
+    }
+    oled->sendBuffer();
+    vTaskDelay(pdMS_TO_TICKS(60));
+  }
+}
+void ekranBaslat() {
+  ekranTip = constrain(ayar.getInt("ek", 0), 0, 2);
+  if (ekranTip == 2) return;
+  if (ekranTip == 1) oled = new U8G2_SH1106_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE, P_SCL, P_SDA);
+  else               oled = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE, P_SCL, P_SDA);
+  Wire.begin(P_SDA, P_SCL); Wire.setClock(400000); Wire.setTimeOut(20);
+  Wire.beginTransmission(0x3C); bool var = Wire.endTransmission() == 0;
+  if (!var) { Wire.beginTransmission(0x3D); var = Wire.endTransmission() == 0; if (var) oled->setI2CAddress(0x3D * 2); }
+  if (!var) { Serial.println("Ekran bulunamadi (SDA=32, SCL=33)"); delete oled; oled = nullptr; return; }
+  oled->begin(); oled->setContrast(200);
+  xTaskCreatePinnedToCore(ekranGorev, "ekran", 4096, nullptr, 1, nullptr, 1);
+  Serial.println("Ekran calisiyor");
+}
+
 void mesaj(uint8_t num, uint8_t* veri, size_t n) {
   if ((int)num != surucu) return;                                  // sadece süren telefonu dinle
   JsonDocument j;
@@ -273,6 +375,7 @@ void mesaj(uint8_t num, uint8_t* veri, size_t n) {
   if (j["olay"].is<const char*>()) {                               // tek seferlik sesler
     const char* o = j["olay"];
     if (!strcmp(o, "pop")) S.pop = 900; else if (!strcmp(o, "grind")) S.gicir = 3500; else if (!strcmp(o, "clunk")) S.tok = 1200;
+    else if (!strcmp(o, "yazi")) { ekranYaziKoy(j["t"] | ""); }
     else if (!strcmp(o, "cough")) S.oksur = 3500; else if (!strcmp(o, "bip")) { S.bipF = j["f"] | 1000; S.bipN = (int)((j["sn"] | 0.1f) * FS); }
     return;
   }
@@ -281,7 +384,7 @@ void mesaj(uint8_t num, uint8_t* veri, size_t n) {
   D.motor = (j["motor"] | 0) != 0; D.mars = (j["mars"] | 0) != 0; D.kontak = j["kontak"] | 0;
   D.far = j["far"] | 0; D.arka = j["arka"] | 0; D.p = j["p"] | 80;
   D.tavan = (j["tavan"] | 0) != 0; D.geri = (j["geri"] | 0) != 0; D.stop = (j["stop"] | 0) != 0;
-  D.korna = (j["korna"] | 0) != 0; D.egz = (j["egz"] | 0) != 0;
+  D.korna = (j["korna"] | 0) != 0; D.egz = (j["egz"] | 0) != 0; D.dinle = (j["dinle"] | 0) != 0;
   if (j["sig"].is<const char*>()) D.sig = j["sig"].as<const char*>()[0]; else D.sig = 0;
   if (j["vites"].is<const char*>()) D.vites = j["vites"].as<const char*>()[0];
   const char* ms = j["motorSes"] | "dizel"; const char* kt = j["kornaTip"] | "normal";
@@ -315,6 +418,7 @@ void setup() {
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
+  ekranBaslat();                                          // OLED ekran (takılı değilse atlanır)
   { // ses ayarı + çökme koruması: ses açıldıktan hemen sonra kart çökerse ses kendiliğinden kapanır
     sesAyar = constrain(ayar.getInt("ses", 2), 0, 3);
     esp_reset_reason_t r = esp_reset_reason();
@@ -362,6 +466,11 @@ void setup() {
     if (ok) { P_IN1 = yeni[0]; P_IN2 = yeni[1]; P_D1 = yeni[2]; P_D2 = yeni[3];
       ayar.putInt("i", P_IN1); ayar.putInt("g", P_IN2); ayar.putInt("r", P_D1); ayar.putInt("l", P_D2); }
     web.send(200, "text/html; charset=utf-8", ok ? "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi.</h2><a style='color:#fb0' href=/>Geri</a>" : "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>HATA: 4 kutuda 4 farkli sey secili olmali.</h2><a style='color:#fb0' href=/>Geri</a>");
+  });
+  web.on("/ekran", HTTP_GET, []() {
+    ayar.putInt("ek", constrain(web.arg("v").toInt(), 0, 2));
+    web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='6;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2>");
+    delay(500); motorYaz(0); servoYaz(0); ESP.restart();
   });
   web.on("/ses", HTTP_GET, []() {
     int v = constrain(web.arg("v").toInt(), 0, 3);
