@@ -514,7 +514,7 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
   <h2>Ayarlar</h2>
   <label class="check"><input type="checkbox" id="phoneSnd" checked> Motor sesi telefondan çalsın (deneme için)</label>
   <h3>Araba adresi</h3>
-  <p>İki yol var: (1) Telefonun WiFi'sinden <b>MRM-ARABA</b> ağına bağlan (şifre <code>mrm12345</code>), adres <code>192.168.4.1</code>. (2) Araba telefonunun hotspot'una bağlıysa (sesli komut için internet lazım) adresi telefonun Hotspot → Bağlı cihazlar kısmında görürsün, genelde <code>192.168.43.x</code>.</p>
+  <p>İki yol var: (1) Telefonun WiFi'sinden <b>MRM-ARABA</b> ağına bağlan (şifre <code>mrm12345</code>), adres <code>192.168.4.1</code>. (2) Araba telefonunun hotspot'una bağlıysa (internet kesilmez, asistan çalışır) adresi <b>arabanın ekranında</b> ve 192.168.4.1 sayfasında yazar. Bir kere yaz, kumanda hatırlar.</p>
   <div class="field"><input id="ip" type="text" value="192.168.4.1" aria-label="ESP32 adresi"><button id="connBtn" class="pbtn">Bağlan</button></div>
   <p id="connMsg"></p>
   <h3>Kamera adresi (ileride)</h3>
@@ -1499,17 +1499,26 @@ function wsOlay(o, ek) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(O
 tap($("#setBtn"), () => $("#dlg").showModal());
 $("#closeDlg").addEventListener("click", () => $("#dlg").close());
 $("#phoneSnd").addEventListener("change", e => { snd.on = e.target.checked; });
+try { const sip = localStorage.getItem("mrm_ip"); if (sip) $("#ip").value = sip; } catch (_) {}
+let ipDenendi = false;
 $("#connBtn").addEventListener("click", () => {
   const ip = $("#ip").value.trim(); if (!ip) return;
+  try { localStorage.setItem("mrm_ip", ip); } catch (_) {}
   try { ws && ws.close(); } catch (_) {}
   setConn("wait", "BAĞLANIYOR"); $("#connMsg").textContent = "";
   try { ws = new WebSocket(`ws://${ip}:81/`); }
   catch (_) { setConn("demo", "DEMO"); $("#connMsg").textContent = "Bu sayfadan bağlanılamıyor (güvenlik engeli). Uygulama sürümünde çalışacak."; return; }
-  ws.onopen = () => { setConn("ok", "BAĞLI"); $("#connMsg").textContent = "Bağlandı."; karsila(); };
+  ws.onopen = () => { ipDenendi = false; setConn("ok", "BAĞLI"); $("#connMsg").textContent = "Bağlandı."; karsila(); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; }
     if (m.surucu === false) { warn("Araba başka telefona bağlı. Önce o telefon ayrılmalı"); $("#connMsg").textContent = "Araba başka telefonda."; }
     if (typeof m.rssi === "number" && m.rssi) sinyal(m.rssi); };
-  ws.onclose = ws.onerror = () => { setConn("demo", "DEMO"); $("#connMsg").textContent = "Bağlanamadı. Araba açık mı, adres doğru mu?"; };
+  ws.onclose = ws.onerror = () => {
+    setConn("demo", "DEMO");
+    if (ip !== "192.168.4.1" && !ipDenendi && ws && ws.readyState === 3) {        // hotspot adresi tutmadıysa kendi ağını dene
+      ipDenendi = true; $("#connMsg").textContent = ip + " bulunamadı, MRM-ARABA (192.168.4.1) deneniyor...";
+      $("#ip").value = "192.168.4.1"; setTimeout(() => { $("#connBtn").click(); $("#ip").value = ip; try { localStorage.setItem("mrm_ip", ip); } catch (_) {} }, 300); return;
+    }
+    ipDenendi = false; $("#connMsg").textContent = "Bağlanamadı. Araba açık mı, adres doğru mu?"; };
 });
 function kameraAc(u) {
   const img = $("#camImg");
