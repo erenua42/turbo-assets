@@ -315,12 +315,28 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
 .tbtn button.gz.on{border-color:#4caf50;color:#7ddc82;background:rgba(76,175,80,.15)}
 .tbtn button.fr.on{border-color:var(--red,#e53935);color:#ff7a75;background:rgba(229,57,53,.15)}
 </style>
+<style>
+#hud{position:absolute;left:8px;top:60px;z-index:5;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px 8px;display:grid;grid-template-columns:repeat(3,auto);gap:2px 10px;font:600 11px system-ui;color:#eee;pointer-events:none;min-width:180px}
+#hud .hb{display:flex;flex-direction:column;align-items:center}#hud .hb b{font-size:18px;line-height:1.1;color:#fff}#hud .hb small{opacity:.6;font-size:9px}
+#hud .hl{grid-column:1/-1;display:flex;align-items:center;gap:6px}#hud .hl span{opacity:.7;flex:0 0 66px}#hud .hl b{margin-left:auto}
+#hud .hl i{flex:1;height:5px;background:rgba(255,255,255,.15);border-radius:3px;overflow:hidden}#hud .hl em{display:block;height:100%;width:0;background:#4caf50;transition:width .2s}
+#surBtn.eko{color:#4caf50}#surBtn.spor{color:#ff5252}
+</style>
 </head>
 <body>
 <div id="app">
   <div class="cam" id="cam">
     <canvas id="simCv"></canvas>
     <img id="camImg" alt="Araba kamerası">
+    <div id="hud" aria-live="off">
+      <div class="hb"><b id="hudHiz">0</b><small>km/s</small></div>
+      <div class="hb"><b id="hudVites">N</b><small>vites</small></div>
+      <div class="hb"><b id="hudMod">NORMAL</b><small>mod</small></div>
+      <div class="hl"><span>Motor gücü</span><i><em id="hudPwBar"></em></i><b id="hudPw">0%</b></div>
+      <div class="hl"><span>Sinyal</span><b id="hudRssi">–</b></div>
+      <div class="hl"><span>Gecikme</span><b id="hudPing">–</b></div>
+      <div class="hl"><span>Çalışma</span><b id="hudUp">–</b></div>
+    </div>
     <div class="nocam">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 10l5-3v10l-5-3z"/><rect x="2" y="6" width="13" height="12" rx="2"/><path d="M3 3l18 18"/></svg>
           <b>KAMERA BAĞLI DEĞİL</b>
@@ -335,6 +351,7 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
     <span class="logo">MRM</span>
     <span id="conn" class="chip demo">DEMO</span>
     <span id="kidChip" class="chip" style="color:var(--blue);display:none">ÇOCUK</span>
+    <button id="surBtn" class="chip" style="cursor:pointer;border:none" aria-label="Sürüş modu">NORMAL</button>
     <div class="spacer"></div>
     <button id="micBtn" class="rbtn" aria-pressed="false" aria-label="Sesli komut"><span id="micTxt" hidden>Ses</span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
@@ -555,7 +572,7 @@ const S = { far:false, tavan:false, sig:0, parlak:80,
             high:false, flash:false, park:false, show:null, engType:"hilux", hornType:"araba", sesV:0, marsSes:1, kont:"dir", egimHas:1, asistan:true, apiKey:"", revBeep:true, pops:true, vib:true,
             name:"", talk:true, autoMic:true, surekli:false, ackBeep:true, cmds:[], driveSec:0 };
 // ayarlar telefonda saklanır
-const CFG_KEYS = ["mode", "load", "scaled", "smart", "trim", "sens", "gauge", "parlak", "kid", "pin", "routes",
+const CFG_KEYS = ["sur", "mode", "load", "scaled", "smart", "trim", "sens", "gauge", "parlak", "kid", "pin", "routes",
                   "park", "engType", "hornType", "revBeep", "pops", "vib", "name", "talk", "ackBeep", "cmds", "autoMic", "surekli", "sesV", "marsSes", "kont", "egimHas", "asistan", "apiKey"];
 try { const c = JSON.parse(localStorage.getItem("mrm_kumanda") || "{}"); CFG_KEYS.forEach(k => { if (k in c) S[k] = c[k]; }); } catch (_) {}
 if (S.sesV !== 2) { S.engType = "hilux"; S.hornType = "araba"; S.sesV = 2; }   // gerçek seslere bir kerelik geçiş
@@ -1511,7 +1528,10 @@ $("#connBtn").addEventListener("click", () => {
   ws.onopen = () => { ipDenendi = false; setConn("ok", "BAĞLI"); $("#connMsg").textContent = "Bağlandı."; karsila(); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; }
     if (m.surucu === false) { warn("Araba başka telefona bağlı. Önce o telefon ayrılmalı"); $("#connMsg").textContent = "Araba başka telefonda."; }
-    if (typeof m.rssi === "number" && m.rssi) sinyal(m.rssi); };
+    if (typeof m.rssi === "number" && m.rssi) { sinyal(m.rssi); $("#hudRssi").textContent = m.rssi + " dBm"; }
+    if (typeof m.pw === "number") { $("#hudPw").textContent = m.pw + "%"; const b = $("#hudPwBar"); b.style.width = Math.min(100, m.pw) + "%"; b.style.background = m.pw > 85 ? "#ff5252" : m.pw > 60 ? "#ffb300" : "#4caf50"; }
+    if (typeof m.up === "number") { const u = m.up; $("#hudUp").textContent = (u >= 3600 ? Math.floor(u / 3600) + "s " : "") + Math.floor(u % 3600 / 60) + "dk " + (u % 60) + "sn"; }
+    if (typeof m.pong === "number") { const d = (Date.now() % 100000 - m.pong + 100000) % 100000; $("#hudPing").textContent = d + " ms"; $("#hudPing").style.color = d > 150 ? "#ff5252" : d > 80 ? "#ffb300" : ""; } };
   ws.onclose = ws.onerror = () => {
     setConn("demo", "DEMO");
     if (ip !== "192.168.4.1" && !ipDenendi && ws && ws.readyState === 3) {        // hotspot adresi tutmadıysa kendi ağını dene
@@ -1654,7 +1674,7 @@ setInterval(() => {
   $("#rpmTxt").textContent = Math.round(rpmD / 100) * 100;
   const dOut = clamp(STEER * S.sens + S.trim / 45, -1, 1);            // direksiyon ayarı
   if (sendTick % 2 === 0 && ws && ws.readyState === 1) ws.send(JSON.stringify({
-    g: Math.round(S.v * 100), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
+    g: Math.round(S.v * 100 * SUR_K[S.sur ?? 1]), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
     vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, dinle: +listening, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType }));
 }, 25);
 
@@ -1847,6 +1867,19 @@ async function simKur() {
 // MRM açılış ekranı
 setTimeout(() => $("#splash").classList.add("out"), 1700); setTimeout(karsila, 1900); setTimeout(() => $("#splash").remove(), 2300);
 $("#splash").addEventListener("pointerdown", () => $("#splash").classList.add("out"));
+
+/* ================= SÜRÜŞ MODU + CANLI BİLGİ ================= */
+const SUR_K = [0.55, 0.8, 1.0], SUR_AD = ["EKO", "NORMAL", "SPOR"];
+if (S.sur === undefined) S.sur = 1;
+function surGoster() { const b = $("#surBtn"); b.textContent = SUR_AD[S.sur]; b.className = "chip " + ["eko", "", "spor"][S.sur]; $("#hudMod").textContent = SUR_AD[S.sur]; }
+$("#surBtn").addEventListener("click", () => { S.sur = (S.sur + 1) % 3; surGoster(); saveCfg(); try { buzz(20); } catch (_) {} try { say(SUR_AD[S.sur].toLowerCase() + " mod"); } catch (_) {} });
+surGoster();
+setInterval(() => {
+  $("#hudHiz").textContent = Math.round(Math.abs(S.v) * SUR_K[S.sur] * 30);
+  $("#hudVites").textContent = S.gear === 0 || S.gear === "N" ? "N" : S.gear;
+  if (ws && ws.readyState === 1) wsOlay("ping", { t: Date.now() % 100000 });
+  else { $("#hudPing").textContent = "–"; $("#hudRssi").textContent = "–"; }
+}, 1000);
 </script>
 </body>
 </html>
