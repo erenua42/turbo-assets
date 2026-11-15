@@ -27,8 +27,7 @@
 #include <U8g2lib.h>
 
 // =================== AYARLAR (gerekirse burayı değiştir) ===================
-const char* HOTSPOT_ADI   = "";            // telefonunun hotspot adı (boşsa sadece kendi WiFi'sini açar)
-const char* HOTSPOT_SIFRE = "";            // hotspot şifresi
+String HOTSPOT_ADI = "", HOTSPOT_SIFRE = "";   // telefon hotspot'u: 192.168.4.1 sayfasından kaydedilir
 const char* AP_ADI        = "MRM-ARABA";   // arabanın kendi WiFi'si
 const char* AP_SIFRE      = "mrm12345";    // en az 8 karakter
 const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
@@ -78,7 +77,10 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <p id=m style="color:#fb0"></p>
 <h3>2) Hoparlor</h3><p>%SESDURUM%</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">%SESTUS%</div><p style="color:#999">Secince araba yeniden baslar.</p>
 <h3>3) Ekran</h3><p>%EKDURUM%</p><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">%EKTUS%</div>
-<h3>4) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
+<h3>4) Telefon hotspot</h3><p>%HSDURUM%</p>
+<form method=POST action=/hotspot><input name=s placeholder="Hotspot adi" value="%HSAD%" style="width:100%;padding:10px;font-size:16px;margin-bottom:6px"><input name=p type=password placeholder="Sifre" style="width:100%;padding:10px;font-size:16px;margin-bottom:6px"><button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
+<p style="color:#999">Bos birakip kaydedersen hotspot kapanir. MRM-ARABA agi her zaman acik kalir.</p>
+<h3>5) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
 <script>function t(p){fetch('/t?p='+p);document.getElementById('m').textContent='Kablo '+p+' calisiyor...';setTimeout(()=>document.getElementById('m').textContent='',900)}</script>)";
 String sayfaYap() {
   String h = FPSTR(SAYFA), k;
@@ -97,6 +99,10 @@ String sayfaYap() {
   for (int i = 0; i < 3; i++) e += String("<a href=/ekran?v=") + i + " style='display:block;text-align:center;padding:12px 4px;border-radius:10px;text-decoration:none;font-size:15px;" + (i == ekranTip ? "background:#fb0;color:#000'>" : "background:#333;color:#eee'>") + ea[i] + "</a>";
   h.replace("%EKTUS%", e);
   h.replace("%EKDURUM%", ekranTip == 2 ? String("Ekran kapali.") : oled ? String("Ekran calisiyor. Goruntu bozuksa digerini sec.") : String("<b style='color:#f55'>Ekran bulunamadi.</b> GND, VCC(3.3V), SCL=33, SDA=32 kablolarina bak."));
+  h.replace("%HSAD%", HOTSPOT_ADI);
+  h.replace("%HSDURUM%", HOTSPOT_ADI.length() == 0 ? String("Kapali.") : WiFi.status() == WL_CONNECTED ?
+    String("<b style='color:#5f5'>Bagli:</b> ") + HOTSPOT_ADI + " &nbsp; Arabanin adresi: <b style='font-size:20px'>" + WiFi.localIP().toString() + "</b><br>Kumandada bu adresi yaz." :
+    String("<b style='color:#fb0'>Bagli degil:</b> ") + HOTSPOT_ADI + " bulunamadi. Telefonun hotspot'u acik mi?");
   h.replace("%SESDURUM%", sesCokme ? "<b style='color:#f55'>Ses acikken kart yeniden basladi, ses KAPATILDI.</b>" : String("Su an: ") + sa[sesAyar]);
   return h;
 }
@@ -337,7 +343,10 @@ void ekranGorev(void*) {
     } else {
       gozCiz(bakX, bakY, h, mod);
       oled->setFont(u8g2_font_5x8_tr);
-      if (mod == 2) { oled->drawStr(100, 12, "z"); oled->drawStr(108, 7, "Z"); oled->drawStr(2, 62, bagli ? "uyku" : "MRM-ARABA bekleniyor"); }
+      if (mod == 2) { oled->drawStr(100, 12, "z"); oled->drawStr(108, 7, "Z"); 
+        if (bagli) oled->drawStr(2, 62, "uyku");
+        else if (WiFi.status() == WL_CONNECTED) { String a = "Adres: " + WiFi.localIP().toString(); oled->drawStr(2, 62, a.c_str()); }
+        else oled->drawStr(2, 62, "MRM-ARABA bekleniyor"); }
       else if (D.dinle && D.dinle) { oled->drawStr(2, 62, "dinliyorum..."); }
       // alt çubuk: vites + hız
       if (bagli && D.motor) {
@@ -441,12 +450,14 @@ void setup() {
   WiFi.setTxPower(WIFI_POWER_19_5dBm);
   WiFi.setSleep(false);
   Serial.printf("Kendi WiFi'si: %s  şifre: %s  adres: %s\n", AP_ADI, AP_SIFRE, WiFi.softAPIP().toString().c_str());
-  if (strlen(HOTSPOT_ADI)) {
-    WiFi.begin(HOTSPOT_ADI, HOTSPOT_SIFRE);
+  HOTSPOT_ADI = ayar.getString("hs", ""); HOTSPOT_SIFRE = ayar.getString("hp", "");
+  if (HOTSPOT_ADI.length()) {
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(HOTSPOT_ADI.c_str(), HOTSPOT_SIFRE.c_str());
     Serial.print("Hotspot'a bağlanıyor");
     for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) { delay(250); Serial.print("."); }
     if (WiFi.status() == WL_CONNECTED) Serial.printf("\nHotspot bağlandı, arabanın adresi: %s\n", WiFi.localIP().toString().c_str());
-    else Serial.println("\nHotspot bulunamadı, sadece kendi WiFi'si açık");
+    else { Serial.println("\nHotspot bulunamadı, sadece kendi WiFi'si açık"); WiFi.setAutoReconnect(false); WiFi.disconnect(false); }   // arama MRM-ARABA ağını bozmasın
   }
   Serial.println("2/4 WiFi tamam"); Serial.flush();
   MDNS.begin("mrm");                                    // mrm.local
@@ -466,6 +477,11 @@ void setup() {
     if (ok) { P_IN1 = yeni[0]; P_IN2 = yeni[1]; P_D1 = yeni[2]; P_D2 = yeni[3];
       ayar.putInt("i", P_IN1); ayar.putInt("g", P_IN2); ayar.putInt("r", P_D1); ayar.putInt("l", P_D2); }
     web.send(200, "text/html; charset=utf-8", ok ? "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi.</h2><a style='color:#fb0' href=/>Geri</a>" : "<body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>HATA: 4 kutuda 4 farkli sey secili olmali.</h2><a style='color:#fb0' href=/>Geri</a>");
+  });
+  web.on("/hotspot", HTTP_POST, []() {
+    ayar.putString("hs", web.arg("s")); if (web.arg("s").length() == 0 || web.arg("p").length()) ayar.putString("hp", web.arg("p"));
+    web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='12;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2><p>Hotspot'a baglaninca adresi arabanin ekraninda ve bu sayfada gorursun.</p>");
+    delay(500); motorYaz(0); servoYaz(0); ESP.restart();
   });
   web.on("/ekran", HTTP_GET, []() {
     ayar.putInt("ek", constrain(web.arg("v").toInt(), 0, 2));
