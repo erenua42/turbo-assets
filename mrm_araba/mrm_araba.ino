@@ -13,7 +13,7 @@
     GPIO19 sol sinyal   GPIO21 sağ sinyal   GPIO22 geri lambası
     GPIO23 hoparlör (2. ULN2003 IN3 → çıkış C; hoparlörün öbür ucu +5V)
     GPIO13 sis farları (2. ULN2003 IN4)
-  v14: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
+  v15: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
        sinyal hızı, WiFi adı, dirençsiz LED koruması, Bluetooth hoparlör
 */
 #include <WiFi.h>
@@ -54,6 +54,7 @@ Preferences ayar;
 U8G2* oled = nullptr; int ekranTip = 0;           // ekran: 0 SSD1306 (0.96"), 1 SH1106 (1.3"), 2 yok
 int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
 const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22, P_SIS = 13;
+int DIR_TIP = 0, SERVO_ORTA = 90, SERVO_ACI = 35;   // direksiyon: 0 = DC motor (27/14), 1 = servo (sinyal 27) — 4x4 mafsalli
 int LED_MAX = 40;                      // dirençsiz LED koruması: en çok %16 (255 = koruma kapalı)
 String BT_AD = "";                     // Bluetooth hoparlör adı (boşsa arabadaki kablolu hoparlör)
 BluetoothA2DPSource a2dp; bool btAcik = false;
@@ -97,6 +98,9 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <form method=POST action=/ayar2>
 <b>Arabanin WiFi adi</b><input name=ap value="%APAD%" maxlength=24 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <b>Bluetooth hoparlor adi</b> <span style="color:#999">(telefonun Bluetooth listesinde gorunen ad, harfi harfine. Bos = arabadaki kablolu hoparlor)</span><input name=bt value="%BTAD%" maxlength=40 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<b>Direksiyon</b><select name=dt style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px"><option value=0 %DT0%>DC motor (MOTOR-B, 27/14)</option><option value=1 %DT1%>Servo (turuncu kablo GPIO 27) - 4x4 mafsalli</option></select>
+<b>Servo orta</b> <span style="color:#999">(teker duz durmuyorsa 80-100 arasi oynat)</span><input name=so type=number min=40 max=140 value="%SO%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<b>Servo donus acisi</b> <span style="color:#999">(teker kasaya degiyorsa kucult, en cok 45)</span><input name=sa type=number min=5 max=45 value="%SA%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <label style="font-size:16px"><input type=checkbox name=lk value=1 %LKCHK% style="transform:scale(1.5);margin-right:10px">Direncsiz LED korumasi (LED'lerde direnc yoksa ACIK kalsin)</label><br><br>
 <button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
 <p style="color:#999">%BTDURUM%</p>
@@ -120,6 +124,7 @@ String sayfaYap() {
   h.replace("%EKTUS%", e);
   h.replace("%EKDURUM%", ekranTip == 2 ? String("Ekran kapali.") : oled ? String("Ekran calisiyor. Goruntu bozuksa digerini sec.") : String("<b style='color:#f55'>Ekran bulunamadi.</b> GND, VCC(3.3V), SCL=33, SDA=32 kablolarina bak."));
   h.replace("%APAD%", AP_ADI); h.replace("%BTAD%", BT_AD); h.replace("%LKCHK%", LED_MAX < 255 ? "checked" : "");
+  h.replace("%DT0%", DIR_TIP == 0 ? "selected" : ""); h.replace("%DT1%", DIR_TIP == 1 ? "selected" : ""); h.replace("%SO%", String(SERVO_ORTA)); h.replace("%SA%", String(SERVO_ACI));
   h.replace("%BTDURUM%", BT_AD.length() == 0 ? String("Bluetooth kapali.") : btAcik && a2dp.is_connected() ? String("<b style='color:#5f5'>Bluetooth hoparlore bagli.</b>") : String("Bluetooth hoparlor araniyor: ") + BT_AD + " (hoparlor acik ve eslesme modunda olsun)");
   h.replace("%HSAD%", HOTSPOT_ADI); h.replace("%EVAD%", EV_ADI);
   h.replace("%HSDURUM%", (HOTSPOT_ADI.length() == 0 && EV_ADI.length() == 0) ? String("Kayitli ag yok.") : WiFi.status() == WL_CONNECTED ?
@@ -276,6 +281,13 @@ void motorYaz(float v) {                // v: -1..1
 uint32_t dirBas = 0; int dirYon = 0;
 void servoYaz(int d) {                  // d: -100..100
   if (DIREKSIYON_TERS) d = -d;
+  if (DIR_TIP == 1) {                   // gerçek servo: 50 Hz, 0.5-2.5 ms
+    int ac = constrain(SERVO_ORTA + d * SERVO_ACI / 100, 0, 180);
+    uint32_t us = 500 + (uint32_t)ac * 2000 / 180;
+    uint32_t dv = us * 16383UL / 20000UL;
+    static uint32_t son = 0xFFFFFFFF; if (dv != son) { son = dv; ledcWrite(P_D1, dv); }
+    return;
+  }
   int a = abs(d);
   if (a < 15) { pwm(P_D1, 0); pwm(P_D2, 0); dirYon = 0; return; }
   int yon = d > 0 ? 1 : -1;
@@ -488,10 +500,12 @@ void setup() {
   delay(200);
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
-  for (int p : MPIN) ledcAttach(p, 2000, 8);              // MX1508 düşük frekansta daha güçlü çalışır
   ayar.begin("mrm", false);
+  DIR_TIP = ayar.getInt("dt", 0); SERVO_ORTA = ayar.getInt("so", 90); SERVO_ACI = ayar.getInt("sa", 35);
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
+  for (int p : MPIN) { if (DIR_TIP == 1 && p == P_D1) ledcAttach(p, 50, 14); else ledcAttach(p, 2000, 8); }   // MX1508 düşük frekansta güçlü; servo 50 Hz
+  if (DIR_TIP == 1) { ledcWrite(P_D2, 0); servoYaz(0); }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) ledcAttach(p, 1000, 8);
   LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "KP-833"); if (BT_AD.length() == 0) BT_AD = "KP-833";
   if (AP_ADI.length() < 2) AP_ADI = "MRM-ARABA";
@@ -562,6 +576,9 @@ void setup() {
     String ap = web.arg("ap"); ap.trim(); if (ap.length() >= 2) ayar.putString("ap", ap);
     String bt = web.arg("bt"); bt.trim(); ayar.putString("bt", bt);
     ayar.putInt("lm", web.arg("lk") == "1" ? 40 : 255);
+    ayar.putInt("dt", web.arg("dt") == "1" ? 1 : 0);
+    if (web.hasArg("so")) ayar.putInt("so", constrain(web.arg("so").toInt(), 40, 140));
+    if (web.hasArg("sa")) ayar.putInt("sa", constrain(web.arg("sa").toInt(), 5, 45));
     web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='10;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2><p>WiFi adini degistirdiysen telefonda yeni ada baglan (sifre ayni).</p>");
     delay(500); motorYaz(0); servoYaz(0); ESP.restart();
   });
@@ -619,7 +636,7 @@ void loop() {
   // sinyal gücü: zayıfsa hız sınırlanır
   if (simdi - sonTelemetri > 500) {
     sonTelemetri = simdi; rssiSon = rssiOku();
-    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"v\":14}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0); ws.sendTXT(surucu, b); }
+    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"v\":15}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0); ws.sendTXT(surucu, b); }
   }
   float sinir = 1.0f;
   if (rssiSon != 0 && rssiSon < -86) sinir = 0.7f;           // sadece çok zayıf sinyalde yavaşla
