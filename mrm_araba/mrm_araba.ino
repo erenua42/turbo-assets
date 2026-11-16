@@ -493,7 +493,7 @@ void setup() {
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) ledcAttach(p, 1000, 8);
-  LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "");
+  LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "KP-833"); if (BT_AD.length() == 0) BT_AD = "KP-833";
   if (AP_ADI.length() < 2) AP_ADI = "MRM-ARABA";
   ekranBaslat();                                          // OLED ekran (takılı değilse atlanır)
   { // ses ayarı + çökme koruması: ses açıldıktan hemen sonra kart çökerse ses kendiliğinden kapanır
