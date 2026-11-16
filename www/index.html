@@ -122,6 +122,8 @@ body.sim #simHud{display:block}
 .lights{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
 .lbtn{height:40px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-weight:600;font-size:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1;touch-action:none}
 .lbtn small{font-size:10px;color:var(--muted);font-weight:500}
+#kisaBar{position:fixed;left:calc(50% + 150px);top:49px;display:flex;gap:5px;z-index:30}#kisaBar button{max-width:64px;padding:6px 5px;line-height:1.1;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:11px;font-weight:600}#kisaBar button:active{border-color:var(--accent);color:var(--accent)}
+.lbtn,#kisaBar button{zoom:var(--bs,1)}
 .lbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(255,176,32,.1)}
 .lbtn.on small{color:var(--accent)}
 .lbtn.high{border-color:var(--blue);color:var(--blue);background:rgba(90,169,255,.12)}
@@ -375,7 +377,8 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
           <button class="lbtn" data-l="L" aria-label="Sol sinyal"><svg viewBox="0 0 16 16"><path d="M1 8 L8 2 V5.5 H15 V10.5 H8 V14 Z" fill="currentColor"/></svg><small hidden></small></button>
           <button class="lbtn" data-l="4" aria-label="Dörtlü"><svg viewBox="0 0 16 16"><path d="M8 1.5 L15 14 H1 Z" fill="none" stroke="#ff4d4d" stroke-width="2"/></svg><small hidden></small></button>
           <button class="lbtn" data-l="R" aria-label="Sağ sinyal"><svg viewBox="0 0 16 16"><path d="M15 8 L8 2 V5.5 H1 V10.5 H8 V14 Z" fill="currentColor"/></svg><small hidden></small></button>
-          <button class="lbtn" data-l="tavan" aria-label="Tavan ışığı"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg><small hidden></small></button>
+          <button class="lbtn" data-l="tavan" aria-label="Kaput + tavan farları"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg><small hidden></small></button>
+          <button class="lbtn" data-l="sis" aria-label="Sis farları"><svg viewBox="0 0 16 16"><path d="M7 3 C2 3 2 13 7 13 Z" fill="currentColor"/><path d="M9 5 H14 M9 8 H15 M9 11 H14" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg><small hidden></small></button>
         </div>
     <div class="heard"><div class="said" id="said"></div></div>
   </div>
@@ -472,6 +475,7 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
 
 <div id="splash" aria-hidden="true"><b>MRM</b><i></i><span>MODEREN MÜHENDİSLİK</span></div>
 
+<div id="kisaBar"></div>
 <dialog id="xdlg">
   <h2>Ekstra</h2>
   <h3>Sürüş modu</h3>
@@ -488,6 +492,31 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
   <p>Araba düz gitmiyorsa "Orta"yı kaydır. Çok sert dönüyorsa keskinliği düşür.</p>
   <h3>Işık parlaklığı</h3>
   <div class="rng"><input id="br" type="range" min="10" max="100" value="80" aria-label="Işık parlaklığı"><output id="brO">%80</output></div>
+  <h3>Lamba parlaklıkları</h3>
+  <div class="rng"><label for="pl_pf">Kısa far</label><input id="pl_pf" type="range" min="5" max="100" step="5"><output id="pl_pfO"></output></div>
+  <div class="rng"><label for="pl_pu">Uzun far</label><input id="pl_pu" type="range" min="5" max="100" step="5"><output id="pl_puO"></output></div>
+  <div class="rng"><label for="pl_pt">Kaput+tavan</label><input id="pl_pt" type="range" min="5" max="100" step="5"><output id="pl_ptO"></output></div>
+  <div class="rng"><label for="pl_ps">Sis</label><input id="pl_ps" type="range" min="5" max="100" step="5"><output id="pl_psO"></output></div>
+  <div class="rng"><label for="pl_pst">Stop</label><input id="pl_pst" type="range" min="5" max="100" step="5"><output id="pl_pstO"></output></div>
+  <div class="rng"><label for="pl_psi">Sinyal</label><input id="pl_psi" type="range" min="5" max="100" step="5"><output id="pl_psiO"></output></div>
+  <div class="rng"><label for="pl_pg">Geri</label><input id="pl_pg" type="range" min="5" max="100" step="5"><output id="pl_pgO"></output></div>
+  <div class="rng"><label for="shz">Sinyal hızı</label><input id="shz" type="range" min="1" max="10" step="1"><output id="shzO"></output></div>
+  <p>Yukarıdaki "Işık parlaklığı" hepsini birlikte kısar. Arabada 192.168.4.1 sayfasındaki "Dirençsiz LED koruması" açıksa en parlak hali bile korumalıdır.</p>
+  <h3>Gaz hassasiyeti</h3>
+  <div class="rng"><label for="expo">Hassas</label><input id="expo" type="range" min="10" max="30" step="1"><output id="expoO"></output></div>
+  <p>Artırınca gazın başı yumuşar: dar yerde milim milim gidersin, sonuna basınca yine tam hız.</p>
+  <h3>Görünüm</h3>
+  <div class="rng"><label for="bsz">Düğme boyu</label><input id="bsz" type="range" min="80" max="150" step="5"><output id="bszO"></output></div>
+  <div class="seg2" id="segRenk"><button data-v="#ffb020" style="color:#ffb020">Turuncu</button><button data-v="#3ddc84" style="color:#3ddc84">Yeşil</button><button data-v="#5aa9ff" style="color:#5aa9ff">Mavi</button><button data-v="#ff4d4d" style="color:#ff4d4d">Kırmızı</button><button data-v="#e0e0e0" style="color:#e0e0e0">Beyaz</button></div>
+  <h3>Kısayol düğmeleri <small style="font-weight:400;color:var(--muted)">üstte, ışık düğmelerinin sağında</small></h3>
+  <div id="kisaSec" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+  <h3>Arabalarım</h3>
+  <div id="carList"></div>
+  <div class="rng"><input id="carAd" type="text" placeholder="Araba adı (ör. Hilux)" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text)"><button class="pbtn" id="carEkle" style="height:36px">Bu adresi kaydet</button></div>
+  <p>Şu anki bağlantı adresini isimle kaydeder. Listeden dokunup o arabaya bağlanırsın.</p>
+  <h3>Araba ayarları ve güncelleme</h3>
+  <a class="gbtn" id="arabaSayfa" href="http://192.168.4.1/" target="_blank" style="display:block;text-align:center;text-decoration:none">Arabanın ayar sayfasını aç</a>
+  <p>Orada: WiFi adı, Bluetooth hoparlör adı, dirençsiz LED koruması ve yazılım güncelleme.</p>
   <label class="check"><input type="checkbox" id="park"> Park lambası: kontak kapanınca farlar ve arka lambalar hafif yanık kalsın</label>
   <button class="gbtn" id="showBtn">Işık şovunu oynat</button>
   <h3>Motor sesi <small style="font-weight:400;color:var(--muted)">1–8 gerçek kayıt, 9–12 eski ses</small></h3>
@@ -570,10 +599,11 @@ const S = { far:false, tavan:false, sig:0, parlak:80,
             key:0, temp:0, mode:1, load:0, scaled:false, smart:true, trim:0, sens:1, gauge:"dijital",
             exhaust:false, kid:false, pin:"", routes:[], rec:null, play:null, sweepUntil:0, sigArmed:false,
             high:false, flash:false, park:false, show:null, engType:"hilux", hornType:"araba", sesV:0, marsSes:1, kont:"dir", egimHas:1, asistan:true, apiKey:"", revBeep:true, pops:true, vib:true,
+            sis:false, pl:{pf:60,pu:100,pt:100,ps:80,pst:100,psi:100,pg:100}, shz:5, expo:15, bsz:100, renk:"#ffb020", kisa:["sov","uzun","tavan","korna"], cars:[],
             name:"", talk:true, autoMic:true, surekli:false, ackBeep:true, cmds:[], driveSec:0 };
 // ayarlar telefonda saklanır
 const CFG_KEYS = ["sur", "mode", "load", "scaled", "smart", "trim", "sens", "gauge", "parlak", "kid", "pin", "routes",
-                  "park", "engType", "hornType", "revBeep", "pops", "vib", "name", "talk", "ackBeep", "cmds", "autoMic", "surekli", "sesV", "marsSes", "kont", "egimHas", "asistan", "apiKey"];
+                  "park", "engType", "hornType", "revBeep", "pops", "vib", "name", "talk", "ackBeep", "cmds", "autoMic", "surekli", "sesV", "marsSes", "kont", "egimHas", "asistan", "apiKey", "pl", "shz", "expo", "bsz", "renk", "kisa", "cars"];
 try { const c = JSON.parse(localStorage.getItem("mrm_kumanda") || "{}"); CFG_KEYS.forEach(k => { if (k in c) S[k] = c[k]; }); } catch (_) {}
 if (S.sesV !== 2) { S.engType = "hilux"; S.hornType = "araba"; S.sesV = 2; }   // gerçek seslere bir kerelik geçiş
 function saveCfg() { try { const c = {}; CFG_KEYS.forEach(k => c[k] = S[k]); localStorage.setItem("mrm_kumanda", JSON.stringify(c)); } catch (_) {} }
@@ -989,7 +1019,7 @@ function startUI() {
 }
 function keyOff(msg) {
   S.engine = false; S.starting = false; snd.crankOff(); S.key = 0;
-  S.far = S.tavan = false; if (S.sig !== "4") S.sig = 0;            // dörtlü kontaksız da yanar
+  S.far = S.tavan = S.sis = false; if (S.sig !== "4") S.sig = 0;            // dörtlü kontaksız da yanar
   startUI(); if (msg) said("", msg);
 }
 function keyOn() {                                                   // aksesuar → kontak açık: ibre testi
@@ -1037,7 +1067,7 @@ function paint() {
     const k = b.dataset.l, sm = b.querySelector("small"); let on;
     if (k === "far") { on = S.far || S.flash; sm.textContent = !S.far ? "kapalı" : S.high ? "uzun" : "kısa"; b.classList.toggle("high", (S.far && S.high) || S.flash); }
     else if (k === "sel") { on = S.flash; }
-    else if (k === "tavan") { on = S[k]; sm.textContent = on ? "açık" : "kapalı"; }
+    else if (k === "tavan" || k === "sis") { on = S[k]; sm.textContent = on ? "açık" : "kapalı"; }
     else if (k === "4") { on = S.sig === "4"; sm.textContent = on ? "açık" : "kapalı"; }
     else { on = S.sig === k; sm.textContent = on ? "açık" : "sinyal"; }
     b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
@@ -1049,7 +1079,7 @@ function paint() {
 document.querySelectorAll(".lbtn").forEach(b => { if (b.dataset.l !== "far") tap(b, () => {
   const k = b.dataset.l; buzz(10);
   if (S.key === 0 && k !== "4") { warn("Önce kontağı aç (bir dokunuş: aksesuar)"); return; }
-  if (k === "tavan") S.tavan = !S.tavan; else { S.sig = S.sig === k ? 0 : k; S.sigArmed = false; }
+  if (k === "tavan") S.tavan = !S.tavan; else if (k === "sis") S.sis = !S.sis; else { S.sig = S.sig === k ? 0 : k; S.sigArmed = false; }
   paint();
 }); });
 // far: dokun = aç/kapa (kısa), çift dokun = uzun far, basılı tut = selektör
@@ -1115,11 +1145,42 @@ $("#showBtn").addEventListener("click", () => { $("#xdlg").close(); sov(); });
 // kendi komutların
 const ACTS = {
   far: ["Farları yak", () => { if (S.key) { S.far = true; S.high = false; } }], uzun: ["Uzun far", () => { if (S.key) { S.far = true; S.high = true; } }],
-  faroff: ["Farları söndür", () => { S.far = false; S.high = false; }], tavan: ["Tavan ışığı", () => { if (S.key) S.tavan = true; }],
+  faroff: ["Farları söndür", () => { S.far = false; S.high = false; }], tavan: ["Kaput+tavan farı", () => { if (S.key) S.tavan = true; }],
   dortlu: ["Dörtlü", () => { S.sig = "4"; }], isikoff: ["Bütün ışıkları kapat", () => { S.far = S.high = S.tavan = false; S.sig = 0; }],
   sov: ["Işık şovu", () => sov()], korna: ["Korna", () => korna(500)], selektor: ["Selektör", () => selektor(3)],
   eko: ["Eko mod", () => { S.mode = 0; modeUI(); }], normal: ["Normal mod", () => { S.mode = 1; modeUI(); }], spor: ["Spor mod", () => { S.mode = 2; modeUI(); }],
+  sis: ["Sis farları", () => { if (S.key) S.sis = !S.sis; }], cakar: ["Kaput+tavan aç/kapa", () => { if (S.key) S.tavan = !S.tavan; }],
   ac: ["Kontağı aç + marş", () => kontak()], kapa: ["Kontağı kapat", () => keyOff()], bul: ["Arabam nerede", () => bul()] };
+// ---- v29: lamba parlaklıkları, görünüm, kısayollar, arabalarım
+(() => {
+  const PL = ["pf", "pu", "pt", "ps", "pst", "psi", "pg"];
+  const uygula = () => { document.documentElement.style.setProperty("--accent", S.renk || "#ffb020"); document.documentElement.style.setProperty("--bs", (S.bsz || 100) / 100);
+    document.querySelectorAll("#segRenk button").forEach(b => b.classList.toggle("on", b.dataset.v === S.renk)); };
+  PL.forEach(k => { const el = $("#pl_" + k); el.value = S.pl[k]; $("#pl_" + k + "O").textContent = "%" + S.pl[k];
+    el.addEventListener("input", () => { S.pl[k] = +el.value; $("#pl_" + k + "O").textContent = "%" + el.value; saveCfg(); }); });
+  const rng = (id, key, fmt) => { const el = $("#" + id); el.value = S[key]; $("#" + id + "O").textContent = fmt(S[key]);
+    el.addEventListener("input", () => { S[key] = +el.value; $("#" + id + "O").textContent = fmt(S[key]); saveCfg(); uygula(); }); };
+  rng("shz", "shz", v => v <= 3 ? "yavaş" : v >= 8 ? "hızlı" : "orta"); rng("expo", "expo", v => (v / 10).toFixed(1) + "x"); rng("bsz", "bsz", v => "%" + v);
+  document.querySelectorAll("#segRenk button").forEach(b => b.addEventListener("click", () => { S.renk = b.dataset.v; saveCfg(); uygula(); }));
+  const kisaCiz = () => { const bar = $("#kisaBar"); bar.textContent = "";
+    (S.kisa || []).forEach(k => { if (!k || !ACTS[k]) return; const b = document.createElement("button"); b.textContent = ACTS[k][0].replace("Kontağı aç + marş", "Marş").replace(" aç/kapa", "");
+      b.addEventListener("click", () => { buzz(12); ACTS[k][1](); paint(); }); bar.appendChild(b); }); };
+  const sec = $("#kisaSec"); for (let i = 0; i < 4; i++) { const sl = document.createElement("select"); sl.style.cssText = "padding:8px;border-radius:8px;background:var(--panel);color:var(--text);border:1px solid var(--line)";
+    sl.innerHTML = '<option value="">— boş —</option>' + Object.keys(ACTS).map(k => `<option value="${k}">${ACTS[k][0]}</option>`).join("");
+    sl.value = (S.kisa || [])[i] || ""; sl.addEventListener("change", () => { S.kisa[i] = sl.value; saveCfg(); kisaCiz(); }); sec.appendChild(sl); }
+  const carCiz = () => { const box = $("#carList"); box.textContent = "";
+    (S.cars || []).forEach((c, i) => { const row = document.createElement("div"); row.className = "rng";
+      const b = document.createElement("button"); b.className = "gbtn"; b.style.flex = "1"; b.textContent = c.ad + " · " + c.ip;
+      b.addEventListener("click", () => { $("#ip").value = c.ip; $("#xdlg").close(); $("#connBtn").click(); });
+      const x = document.createElement("button"); x.className = "gbtn"; x.textContent = "Sil"; x.addEventListener("click", () => { S.cars.splice(i, 1); saveCfg(); carCiz(); });
+      row.append(b, x); box.appendChild(row); });
+    if (!(S.cars || []).length) box.innerHTML = '<p>Kayıtlı araba yok.</p>'; };
+  $("#carEkle").addEventListener("click", () => { const ad = $("#carAd").value.trim() || "Araba " + ((S.cars || []).length + 1), ip = $("#ip").value.trim() || "192.168.4.1";
+    S.cars = (S.cars || []).filter(c => c.ip !== ip); S.cars.push({ ad, ip }); $("#carAd").value = ""; saveCfg(); carCiz(); });
+  const sayfa = () => { $("#arabaSayfa").href = "http://" + ($("#ip").value.trim() || "192.168.4.1") + "/"; };
+  $("#ip").addEventListener("input", sayfa); sayfa();
+  uygula(); kisaCiz(); carCiz();
+})();
 let cSel = new Set();
 function cUI() {
   const box = $("#cActs"); box.textContent = "";
@@ -1233,6 +1294,15 @@ function gaugeUI() {
 }
 
 /* ================= SESLİ KOMUT ================= */
+// akıllı komut: "farları yak ve sağa dön, sonra korna çal" → sırayla yapar
+function komutAkilli(raw, yzden) {
+  const parcalar = raw.split(/\s*(?:,|;|\bve\b|\bsonra\b|\bardından\b|\bdaha sonra\b|\bbir de\b)\s*/i).map(x => x.trim()).filter(x => x.length > 1);
+  if (parcalar.length < 2) return komut(raw, yzden);
+  let gec = 0, ilk;
+  parcalar.forEach((k, i) => { setTimeout(() => { const r = komut(k, yzden); if (i === 0) ilk = r; }, gec);
+    gec += /kontağ|marş|motor/i.test(k) ? 2600 : /git|dön|ileri|geri/i.test(k) ? 1900 : 500; });
+  return "Sırayla yapıyorum";
+}
 function komut(raw, yzden) {
   const t = raw.toLocaleLowerCase("tr-TR").replace(/[.,!?]/g, " ");
   const has = (...w) => w.some(x => t.includes(x));
@@ -1283,8 +1353,11 @@ function komut(raw, yzden) {
     else if (has("artır", "arttır", "yükselt", "büyüt")) r = gearByVoice(order[Math.min(3, i + 1)]);
     else if (has("düşür", "küçült", "azalt")) r = gearByVoice(order[Math.max(0, i - 1)]);
     else { const k = Object.keys(n).find(w => t.includes(w)) || (t.match(/[1-4]/) || [])[0]; if (k) r = gearByVoice(n[k] || k); } }
-  else if (S.key === 0 && has("tavan", "far", "sinyal", "ışık")) r = "Önce kontağı aç";
-  else if (has("tavan")) { S.tavan = !off; r = off ? "Tavan ışığı kapalı" : "Tavan ışığı açık"; }
+  else if (S.key === 0 && has("tavan", "far", "sinyal", "ışık", "sis", "kaput", "çakar")) r = "Önce kontağı aç";
+  else if (has("sis")) { S.sis = !off; r = off ? "Sis farları kapalı" : "Sis farları açık"; }
+  else if (has("tavan", "kaput", "çakar", "projektör")) { S.tavan = !off; r = off ? "Kaput ve tavan farları kapalı" : "Kaput ve tavan farları açık"; }
+  else if (has("ışık", "lamba", "far") && (t.match(/%\s*\d+|\d+\s*%|yüzde\s*\d+/) || has("yarı"))) {
+    const m = t.match(/(\d+)/); S.parlak = has("yarı") ? 50 : Math.max(10, Math.min(100, +m[1])); saveCfg(); r = "Işıklar %" + S.parlak; }
   else if (has("far")) { S.far = !off; if (off) S.high = false; r = off ? "Farlar kapalı" : "Farlar açık"; }
   else if (has("kıs") || (has("azalt") && has("ışık"))) { S.parlak = 30; r = "Işıklar kısık"; }
   else if (has("artır", "arttır", "parlak")) { S.parlak = 100; r = "Işıklar tam parlak"; }
@@ -1422,7 +1495,7 @@ function uyan() { uyanik = 1; micUI(); buzz(15); try { snd.beep(990, 0.08, 0.06)
   clearTimeout(uyanikT); uyanikT = setTimeout(() => { uyanik = 0; micUI(); }, 6000); }
 function isle(t) {                                           // asistan açıksa her şey yapay zekâya; "dur" her zaman anında
   if (/(^|\s)(dur|durdur|stop|fren)(\s|$)/i.test(t.toLocaleLowerCase("tr"))) { komut(t); return; }
-  if (yzVar() && S.asistan) yzSor(t); else komut(t); }
+  if (yzVar() && S.asistan) yzSor(t); else komutAkilli(t); }
 function duyulan(t) {
   if (konusuyor) return;
   if (S.surekli) { isle(t); return; }
@@ -1517,7 +1590,7 @@ tap($("#setBtn"), () => $("#dlg").showModal());
 $("#closeDlg").addEventListener("click", () => $("#dlg").close());
 $("#phoneSnd").addEventListener("change", e => { snd.on = e.target.checked; });
 try { const sip = localStorage.getItem("mrm_ip"); if (sip) $("#ip").value = sip; } catch (_) {}
-let ipDenendi = false;
+let ipDenendi = false, wasConnected = false;
 $("#connBtn").addEventListener("click", () => {
   const ip = $("#ip").value.trim(); if (!ip) return;
   try { localStorage.setItem("mrm_ip", ip); } catch (_) {}
@@ -1525,14 +1598,16 @@ $("#connBtn").addEventListener("click", () => {
   setConn("wait", "BAĞLANIYOR"); $("#connMsg").textContent = "";
   try { ws = new WebSocket(`ws://${ip}:81/`); }
   catch (_) { setConn("demo", "DEMO"); $("#connMsg").textContent = "Bu sayfadan bağlanılamıyor (güvenlik engeli). Uygulama sürümünde çalışacak."; return; }
-  ws.onopen = () => { ipDenendi = false; setConn("ok", "BAĞLI"); $("#connMsg").textContent = "Bağlandı."; karsila(); };
+  ws.onopen = () => { ipDenendi = false; wasConnected = true; setConn("ok", "BAĞLI"); $("#connMsg").textContent = "Bağlandı."; karsila(); };
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (_) { return; }
     if (m.surucu === false) { warn("Araba başka telefona bağlı. Önce o telefon ayrılmalı"); $("#connMsg").textContent = "Araba başka telefonda."; }
     if (typeof m.rssi === "number" && m.rssi) { sinyal(m.rssi); $("#hudRssi").textContent = m.rssi + " dBm"; }
     if (typeof m.pw === "number") { $("#hudPw").textContent = m.pw + "%"; const b = $("#hudPwBar"); b.style.width = Math.min(100, m.pw) + "%"; b.style.background = m.pw > 85 ? "#ff5252" : m.pw > 60 ? "#ffb300" : "#4caf50"; }
+    if (typeof m.bt === "number") $("#connMsg").textContent = m.bt === 2 ? "Bağlandı · Bluetooth hoparlör bağlı" : m.bt === 1 ? "Bağlandı · Bluetooth hoparlör aranıyor" : "Bağlandı.";
     if (typeof m.up === "number") { const u = m.up; $("#hudUp").textContent = (u >= 3600 ? Math.floor(u / 3600) + "s " : "") + Math.floor(u % 3600 / 60) + "dk " + (u % 60) + "sn"; }
     if (typeof m.pong === "number") { const d = (Date.now() % 100000 - m.pong + 100000) % 100000; $("#hudPing").textContent = d + " ms"; $("#hudPing").style.color = d > 150 ? "#ff5252" : d > 80 ? "#ffb300" : ""; } };
   ws.onclose = ws.onerror = () => {
+    if (wasConnected) { wasConnected = false; buzz([300, 150, 300, 150, 300]); [0, 350, 700].forEach(d => setTimeout(() => snd.beep(1900, 0.22, 0.25), d)); warn("BAĞLANTI KOPTU"); }
     setConn("demo", "DEMO");
     if (ip !== "192.168.4.1" && !ipDenendi && ws && ws.readyState === 3) {        // hotspot adresi tutmadıysa kendi ağını dene
       ipDenendi = true; $("#connMsg").textContent = ip + " bulunamadı, MRM-ARABA (192.168.4.1) deneniyor...";
@@ -1674,8 +1749,11 @@ setInterval(() => {
   $("#rpmTxt").textContent = Math.round(rpmD / 100) * 100;
   const dOut = clamp(STEER * S.sens + S.trim / 45, -1, 1);            // direksiyon ayarı
   if (sendTick % 2 === 0 && ws && ws.readyState === 1) ws.send(JSON.stringify({
-    g: Math.round(S.v * 100 * SUR_K[S.sur ?? 1]), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
-    vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, dinle: +listening, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType }));
+    g: Math.round(Math.sign(S.v) * Math.pow(Math.abs(S.v), (S.expo || 10) / 10) * 100 * SUR_K[S.sur ?? 1]), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
+    vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, dinle: +listening, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType,
+    uzun: +((S.far && S.high) || S.flash || (S.show && S.show.far >= 100)), sis: +S.sis, sh: Math.round(700 - (S.shz || 5) * 55),
+    pf: Math.round(S.pl.pf * S.parlak / 100), pu: Math.round(S.pl.pu * S.parlak / 100), pt: Math.round(S.pl.pt * S.parlak / 100), ps: Math.round(S.pl.ps * S.parlak / 100),
+    pst: Math.round(S.pl.pst * S.parlak / 100), psi: Math.round(S.pl.psi * S.parlak / 100), pg: Math.round(S.pl.pg * S.parlak / 100) }));
 }, 25);
 
 /* ================= DEMO HARİTA ================= */
