@@ -55,7 +55,7 @@ Preferences ayar;
 U8G2* oled = nullptr; int ekranTip = 0;           // ekran: 0 SSD1306 (0.96"), 1 SH1106 (1.3"), 2 yok
 int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
 const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22, P_SIS = 13;
-int DIR_TIP = 0, SERVO_ORTA = 90, SERVO_ACI = 40;   // direksiyon: 0 = DC motor (27/14), 1 = servo (sinyal 27) — 4x4 mafsalli
+int DIR_TIP = 0, SERVO_ORTA = 90, SERVO_ACI = 30;   // direksiyon: 0 = DC motor (27/14), 1 = servo (sinyal 27) — 4x4 mafsalli
 int LED_MAX = 40;                      // dirençsiz LED koruması: en çok %16 (255 = koruma kapalı)
 String BT_AD = "";                     // Bluetooth hoparlör adı (boşsa arabadaki kablolu hoparlör)
 BluetoothA2DPSource a2dp; bool btAcik = false;
@@ -101,7 +101,7 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <b>Bluetooth hoparlor adi</b> <span style="color:#999">(telefonun Bluetooth listesinde gorunen ad, harfi harfine. Bos = arabadaki kablolu hoparlor)</span><input name=bt value="%BTAD%" maxlength=40 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <b>Direksiyon</b><select name=dt style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px"><option value=0 %DT0%>DC motor (MOTOR-B, 27/14)</option><option value=1 %DT1%>Servo (turuncu kablo GPIO 27) - 4x4 mafsalli</option></select>
 <b>Servo orta</b> <span style="color:#999">(teker duz durmuyorsa 80-100 arasi oynat)</span><input name=so type=number min=40 max=140 value="%SO%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
-<b>Servo donus acisi</b> <span style="color:#999">(Niva 4x4: 40 = yaklasik 10 derece. 40in ustune cikma, teker kasaya degiyorsa kucult)</span><input name=sa type=number min=5 max=45 value="%SA%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<b>Servo donus acisi</b> <span style="color:#999">(Niva 4x4: 30 yaz = yaklasik 10 derece teker donusu. 30un ustune cikma)</span><input name=sa type=number min=5 max=45 value="%SA%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <label style="font-size:16px"><input type=checkbox name=lk value=1 %LKCHK% style="transform:scale(1.5);margin-right:10px">Direncsiz LED korumasi (LED'lerde direnc yoksa ACIK kalsin)</label><br><br>
 <button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
 <p style="color:#999">%BTDURUM%</p>
@@ -502,7 +502,7 @@ void setup() {
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
   // PWM: motor 15 kHz, servo 50 Hz, ışıklar 1 kHz, hoparlör 78 kHz
   ayar.begin("mrm", false);
-  DIR_TIP = ayar.getInt("dt", 0); SERVO_ORTA = ayar.getInt("so", 90); SERVO_ACI = ayar.getInt("sa", 40);
+  DIR_TIP = ayar.getInt("dt", 0); SERVO_ORTA = ayar.getInt("so", 90); SERVO_ACI = ayar.getInt("sa", 30);
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : MPIN) { if (DIR_TIP == 1 && p == P_D1) ledcAttach(p, 50, 14); else ledcAttach(p, 2000, 8); }   // MX1508 düşük frekansta güçlü; servo 50 Hz
