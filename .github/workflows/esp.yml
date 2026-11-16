@@ -18,6 +18,8 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
           arduino-cli lib install "WebSockets" "ArduinoJson" "U8g2"
+          arduino-cli config set library.enable_unsafe_install true
+          arduino-cli lib install --git-url https://github.com/pschatzmann/ESP32-A2DP.git
       - name: Derle
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 --build-property "build.partitions=min_spiffs" --build-property "upload.maximum_size=1966080" --output-dir out mrm_araba

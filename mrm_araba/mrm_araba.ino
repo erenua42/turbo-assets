@@ -12,6 +12,9 @@
     GPIO16 far   GPIO17 tavan   GPIO18 stop/arka lamba
     GPIO19 sol sinyal   GPIO21 sağ sinyal   GPIO22 geri lambası
     GPIO23 hoparlör (2. ULN2003 IN3 → çıkış C; hoparlörün öbür ucu +5V)
+    GPIO13 sis farları (2. ULN2003 IN4)
+  v14: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
+       sinyal hızı, WiFi adı, dirençsiz LED koruması, Bluetooth hoparlör
 */
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -25,10 +28,11 @@
 #include <Preferences.h>
 #include <Wire.h>
 #include <U8g2lib.h>
+#include "BluetoothA2DPSource.h"
 
 // =================== AYARLAR (gerekirse burayı değiştir) ===================
 String HOTSPOT_ADI = "", HOTSPOT_SIFRE = "", EV_ADI = "", EV_SIFRE = "", BAGLI_AG = "";   // telefon hotspot'u: 192.168.4.1 sayfasından kaydedilir
-const char* AP_ADI        = "MRM-ARABA";   // arabanın kendi WiFi'si
+String AP_ADI            = "MRM-ARABA";   // arabanın kendi WiFi'si (192.168.4.1 sayfasından değişir)
 const char* AP_SIFRE      = "mrm12345";    // en az 8 karakter
 const char* OTA_SIFRE     = "mrm1234";     // kablosuz kod yükleme şifresi
 
@@ -49,7 +53,11 @@ const int P_HOP = 23;
 Preferences ayar;
 U8G2* oled = nullptr; int ekranTip = 0;           // ekran: 0 SSD1306 (0.96"), 1 SH1106 (1.3"), 2 yok
 int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
-const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22;
+const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI = 22, P_SIS = 13;
+int LED_MAX = 40;                      // dirençsiz LED koruması: en çok %16 (255 = koruma kapalı)
+String BT_AD = "";                     // Bluetooth hoparlör adı (boşsa arabadaki kablolu hoparlör)
+BluetoothA2DPSource a2dp; bool btAcik = false;
+uint32_t karsilamaBas = 0;             // karşılama şovu başlangıcı
 
 // =================== DURUM (telefondan gelir) ===================
 struct Durum {
@@ -64,6 +72,10 @@ struct Durum {
   char  vites = 'N';
   int   motorTip = 0;                  // 0 dizel, 1 v8, 2 traktör, 3 elektrikli
   int   kornaTip = 0;                  // 0 normal, 1 kamyon, 2 tiz, 3 melodi
+  bool  yeni = false;                  // yeni kumanda (ayrı lamba parlaklıkları gönderiyor)
+  bool  uzun = false, sis = false;
+  int   pf = 60, pu = 100, pt = 100, ps = 80, pst = 100, psi = 100, pg = 100;   // kısa far, uzun far, kaput+tavan, sis, stop, sinyal, geri (0..100)
+  int   sh = 333;                      // sinyal yanıp sönme yarı süresi (ms)
 } D;
 
 WebSocketsServer ws(81);
@@ -81,7 +93,14 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <form method=POST action=/hotspot><b>Telefon hotspot</b><input name=s placeholder="Hotspot adi" value="%HSAD%" style="width:100%;padding:10px;font-size:16px;margin:4px 0"><input name=p type=password placeholder="Sifre - degistirmeyeceksen bos birak" style="width:100%;padding:10px;font-size:16px;margin-bottom:10px">
 <b>Ev WiFi</b><input name=es placeholder="Ev WiFi adi" value="%EVAD%" style="width:100%;padding:10px;font-size:16px;margin:4px 0"><input name=ep type=password placeholder="Sifre - degistirmeyeceksen bos birak" style="width:100%;padding:10px;font-size:16px;margin-bottom:6px"><button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
 <p style="color:#999">Araba once hotspot'u, bulamazsa ev WiFi'sini dener. Ikisi de yoksa sadece MRM-ARABA agi acilir (o her zaman acik).</p>
-<h3>5) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
+<h3>5) Isik, WiFi adi, Bluetooth hoparlor</h3>
+<form method=POST action=/ayar2>
+<b>Arabanin WiFi adi</b><input name=ap value="%APAD%" maxlength=24 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<b>Bluetooth hoparlor adi</b> <span style="color:#999">(telefonun Bluetooth listesinde gorunen ad, harfi harfine. Bos = arabadaki kablolu hoparlor)</span><input name=bt value="%BTAD%" maxlength=40 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<label style="font-size:16px"><input type=checkbox name=lk value=1 %LKCHK% style="transform:scale(1.5);margin-right:10px">Direncsiz LED korumasi (LED'lerde direnc yoksa ACIK kalsin)</label><br><br>
+<button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
+<p style="color:#999">%BTDURUM%</p>
+<h3>6) Yazilim guncelle</h3><form method=POST action=/guncelle enctype=multipart/form-data><input type=file name=f accept=.bin><br><br><button style="padding:12px 24px;font-size:16px">Yukle</button></form>
 <script>function t(p){fetch('/t?p='+p);document.getElementById('m').textContent='Kablo '+p+' calisiyor...';setTimeout(()=>document.getElementById('m').textContent='',900)}</script>)";
 String sayfaYap() {
   String h = FPSTR(SAYFA), k;
@@ -100,6 +119,8 @@ String sayfaYap() {
   for (int i = 0; i < 3; i++) e += String("<a href=/ekran?v=") + i + " style='display:block;text-align:center;padding:12px 4px;border-radius:10px;text-decoration:none;font-size:15px;" + (i == ekranTip ? "background:#fb0;color:#000'>" : "background:#333;color:#eee'>") + ea[i] + "</a>";
   h.replace("%EKTUS%", e);
   h.replace("%EKDURUM%", ekranTip == 2 ? String("Ekran kapali.") : oled ? String("Ekran calisiyor. Goruntu bozuksa digerini sec.") : String("<b style='color:#f55'>Ekran bulunamadi.</b> GND, VCC(3.3V), SCL=33, SDA=32 kablolarina bak."));
+  h.replace("%APAD%", AP_ADI); h.replace("%BTAD%", BT_AD); h.replace("%LKCHK%", LED_MAX < 255 ? "checked" : "");
+  h.replace("%BTDURUM%", BT_AD.length() == 0 ? String("Bluetooth kapali.") : btAcik && a2dp.is_connected() ? String("<b style='color:#5f5'>Bluetooth hoparlore bagli.</b>") : String("Bluetooth hoparlor araniyor: ") + BT_AD + " (hoparlor acik ve eslesme modunda olsun)");
   h.replace("%HSAD%", HOTSPOT_ADI); h.replace("%EVAD%", EV_ADI);
   h.replace("%HSDURUM%", (HOTSPOT_ADI.length() == 0 && EV_ADI.length() == 0) ? String("Kayitli ag yok.") : WiFi.status() == WL_CONNECTED ?
     String("<b style='color:#5f5'>Bagli:</b> ") + BAGLI_AG + " &nbsp; Arabanin adresi: <b style='font-size:20px'>" + WiFi.localIP().toString() + "</b><br>Kumandada bu adresi yaz." :
@@ -136,6 +157,7 @@ static void lpAyarla(float fc, float q) {          // biquad alçak geçiren
   S.b0 = (1 - c) / 2 / a0; S.b1 = (1 - c) / a0; S.b2 = S.b0; S.a1 = -2 * c / a0; S.a2 = (1 - al) / a0;
 }
 
+volatile float sesSon = 0;                 // son ses örneği (-1..1), Bluetooth için
 static uint8_t sesUret() {
   float rpm = S.rpm, yuk = S.yuk; int tip = S.tip;
   float f, r2, r3, lp, kaz, nK;                    // motor türüne göre
@@ -201,9 +223,21 @@ static uint8_t sesUret() {
   S.zarf += (hedef - S.zarf) * (hedef > S.zarf ? 0.01f : 0.0005f);
   float amp = 127.0f * SES_SEVIYE * S.zarf;
   out = fminf(fmaxf(out, -1.0f), 1.0f);
+  sesSon = out * S.zarf;
   int duty = (int)(amp + out * amp);
   duty = constrain(duty, 0, 255);
   return uyuyor ? 0 : (uint8_t)duty;
+}
+// Bluetooth hoparlör: 44.1 kHz stereo istenir, ses motoru 10 kHz üretir → örnek tekrarıyla çevrilir
+int32_t btVeri(Frame* fr, int32_t n) {
+  static float faz = 0;
+  for (int i = 0; i < n; i++) {
+    faz += FS / 44100.0f;
+    while (faz >= 1) { faz -= 1; sesUret(); }
+    int16_t v = (int16_t)(sesSon * 26000);
+    fr[i].channel1 = v; fr[i].channel2 = v;
+  }
+  return n;
 }
 // Sesi ayrı bir görev hesaplar, tampona yazar; 10 kHz zamanlayıcı sadece tampondan okuyup hoparlöre verir.
 static uint8_t sesTampon[512]; volatile uint16_t sesYaz = 0, sesOku = 0;
@@ -259,20 +293,43 @@ int8_t rssiOku() {
   return 0;
 }
 
+int ledYaz(int yuzdeV) { return constrain(yuzdeV, 0, 100) * LED_MAX / 100; }   // dirençsiz koruma sınırı
 void isiklar(bool kopuk) {
-  if (uyuyor) { for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) pwm(p, 0); return; }
-  bool yan = (millis() / 333) % 2 == 0;                            // sinyal ESP32'de çakar
+  if (uyuyor) { for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) pwm(p, 0); return; }
+  uint32_t ms = millis();
+  if (karsilamaBas && ms - karsilamaBas < 2600) {                // karşılama şovu: lambalar sırayla
+    uint32_t t = ms - karsilamaBas; int adim = t / 330;
+    pwm(P_FAR,   adim == 0 || adim >= 6 ? ledYaz(100) : 0);
+    pwm(P_SIS,   adim == 1 || adim >= 6 ? ledYaz(100) : 0);
+    pwm(P_TAVAN, adim == 2 || adim >= 6 ? ledYaz(100) : 0);
+    pwm(P_SOL,   adim == 3 || adim == 6 ? ledYaz(100) : 0);
+    pwm(P_SAG,   adim == 3 || adim == 6 ? ledYaz(100) : 0);
+    pwm(P_STOP,  adim == 4 || adim >= 6 ? ledYaz(100) : 0);
+    pwm(P_GERI,  adim == 5 || adim >= 6 ? ledYaz(100) : 0);
+    return;
+  }
+  karsilamaBas = 0;
+  int yari = D.yeni ? D.sh : 333;
+  bool yan = (ms / yari) % 2 == 0;                                // sinyal ESP32'de çakar
   static bool oncekiYan = false;
   char sig = kopuk ? '4' : D.sig;
   if (sig && yan != oncekiYan) S.tik = 60;                         // sinyal "tık"
   oncekiYan = yan;
-  int p = yuzde(D.p);
-  pwm(P_FAR, yuzde(D.far));
-  pwm(P_TAVAN, D.tavan ? p : 0);
-  pwm(P_STOP, yuzde(D.arka));
-  pwm(P_SOL, (sig == 'L' || sig == '4') && yan ? p : 0);
-  pwm(P_SAG, (sig == 'R' || sig == '4') && yan ? p : 0);
-  pwm(P_GERI, D.geri ? p : 0);
+  bool sol = (sig == 'L' || sig == '4') && yan, sag = (sig == 'R' || sig == '4') && yan;
+  if (!D.yeni) {                                                   // eski kumanda: eskisi gibi
+    int p = D.p * LED_MAX / 255 * 255 / 100;
+    pwm(P_FAR, ledYaz(D.far)); pwm(P_TAVAN, D.tavan ? ledYaz(D.p) : 0); pwm(P_STOP, ledYaz(D.arka));
+    pwm(P_SOL, sol ? ledYaz(D.p) : 0); pwm(P_SAG, sag ? ledYaz(D.p) : 0); pwm(P_GERI, D.geri ? ledYaz(D.p) : 0); pwm(P_SIS, 0);
+    (void)p; return;
+  }
+  int far = D.uzun ? D.pu : (D.far > 0 ? D.pf : 0);
+  pwm(P_FAR, ledYaz(far));
+  pwm(P_TAVAN, D.tavan ? ledYaz(D.pt) : 0);                         // kaput + tavan farları
+  pwm(P_SIS, D.sis ? ledYaz(D.ps) : 0);
+  pwm(P_STOP, ledYaz(D.stop ? D.pst : D.arka * D.pst / 100));       // frende tam, park lambasında kısık
+  pwm(P_SOL, sol ? ledYaz(D.psi) : 0);
+  pwm(P_SAG, sag ? ledYaz(D.psi) : 0);
+  pwm(P_GERI, D.geri ? ledYaz(D.pg) : 0);
 }
 
 void uyan() {
@@ -398,6 +455,13 @@ void mesaj(uint8_t num, uint8_t* veri, size_t n) {
   D.korna = (j["korna"] | 0) != 0; D.egz = (j["egz"] | 0) != 0; D.dinle = (j["dinle"] | 0) != 0;
   if (j["sig"].is<const char*>()) D.sig = j["sig"].as<const char*>()[0]; else D.sig = 0;
   if (j["vites"].is<const char*>()) D.vites = j["vites"].as<const char*>()[0];
+  D.yeni = j["pf"].is<int>();
+  if (D.yeni) {
+    D.uzun = (j["uzun"] | 0) != 0; D.sis = (j["sis"] | 0) != 0;
+    D.pf = j["pf"] | 60; D.pu = j["pu"] | 100; D.pt = j["pt"] | 100; D.ps = j["ps"] | 80;
+    D.pst = j["pst"] | 100; D.psi = j["psi"] | 100; D.pg = j["pg"] | 100;
+    D.sh = constrain((int)(j["sh"] | 333), 150, 800);
+  }
   const char* ms = j["motorSes"] | "dizel"; const char* kt = j["kornaTip"] | "normal";
   D.motorTip = !strcmp(ms, "v8") ? 1 : !strcmp(ms, "traktor") ? 2 : !strcmp(ms, "elektrik") ? 3 : 0;
   D.kornaTip = !strcmp(kt, "kamyon") ? 1 : !strcmp(kt, "tiz") ? 2 : !strcmp(kt, "melodi") ? 3 : 0;
@@ -407,7 +471,7 @@ void wsOlay(uint8_t num, WStype_t tip, uint8_t* veri, size_t n) {
   switch (tip) {
     case WStype_CONNECTED:
       uyan();
-      if (surucu < 0) { surucu = num; ws.sendTXT(num, "{\"surucu\":true}"); Serial.printf("Telefon %d bağlandı (sürücü)\n", num); }
+      if (surucu < 0) { surucu = num; karsilamaBas = millis(); S.bipF = 880; S.bipN = (int)(0.18f * FS); ws.sendTXT(num, "{\"surucu\":true}"); Serial.printf("Telefon %d bağlandı (sürücü)\n", num); }
       else ws.sendTXT(num, "{\"surucu\":false}");
       break;
     case WStype_DISCONNECTED:
@@ -428,7 +492,9 @@ void setup() {
   ayar.begin("mrm", false);
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
-  for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI}) ledcAttach(p, 1000, 8);
+  for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) ledcAttach(p, 1000, 8);
+  LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "");
+  if (AP_ADI.length() < 2) AP_ADI = "MRM-ARABA";
   ekranBaslat();                                          // OLED ekran (takılı değilse atlanır)
   { // ses ayarı + çökme koruması: ses açıldıktan hemen sonra kart çökerse ses kendiliğinden kapanır
     sesAyar = constrain(ayar.getInt("ses", 2), 0, 3);
@@ -440,7 +506,7 @@ void setup() {
     static const float SV[4] = {0, 0.22f, 0.4f, 0.55f};
     SES_SEVIYE = SV[sesAyar]; SES_ACIK = sesAyar > 0;
   }
-  if (SES_ACIK) ledcAttach(P_HOP, 78125, 8);
+  if (SES_ACIK && BT_AD.length() == 0) ledcAttach(P_HOP, 78125, 8);
   else { pinMode(P_HOP, OUTPUT); digitalWrite(P_HOP, LOW); }       // ses kapalıyken hoparlörden akım geçmesin
   for (int &v : pwmSon) v = -1;
   motorYaz(0); servoYaz(0);
@@ -448,10 +514,10 @@ void setup() {
 
   // WiFi: önce hotspot, her durumda kendi WiFi'si de açık
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(AP_ADI, AP_SIFRE);
+  WiFi.softAP(AP_ADI.c_str(), AP_SIFRE);
   WiFi.setTxPower(WIFI_POWER_19_5dBm);
   WiFi.setSleep(false);
-  Serial.printf("Kendi WiFi'si: %s  şifre: %s  adres: %s\n", AP_ADI, AP_SIFRE, WiFi.softAPIP().toString().c_str());
+  Serial.printf("Kendi WiFi'si: %s  şifre: %s  adres: %s\n", AP_ADI.c_str(), AP_SIFRE, WiFi.softAPIP().toString().c_str());
   HOTSPOT_ADI = ayar.getString("hs", ""); HOTSPOT_SIFRE = ayar.getString("hp", "");
   EV_ADI = ayar.getString("es", ""); EV_SIFRE = ayar.getString("ep", "");
   if (HOTSPOT_ADI.length() || EV_ADI.length()) {
@@ -492,6 +558,13 @@ void setup() {
     web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='12;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2><p>Hotspot'a baglaninca adresi arabanin ekraninda ve bu sayfada gorursun.</p>");
     delay(500); motorYaz(0); servoYaz(0); ESP.restart();
   });
+  web.on("/ayar2", HTTP_POST, []() {
+    String ap = web.arg("ap"); ap.trim(); if (ap.length() >= 2) ayar.putString("ap", ap);
+    String bt = web.arg("bt"); bt.trim(); ayar.putString("bt", bt);
+    ayar.putInt("lm", web.arg("lk") == "1" ? 40 : 255);
+    web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='10;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2><p>WiFi adini degistirdiysen telefonda yeni ada baglan (sifre ayni).</p>");
+    delay(500); motorYaz(0); servoYaz(0); ESP.restart();
+  });
   web.on("/ekran", HTTP_GET, []() {
     ayar.putInt("ek", constrain(web.arg("v").toInt(), 0, 2));
     web.send(200, "text/html; charset=utf-8", "<meta http-equiv=refresh content='6;url=/'><body style='background:#111;color:#eee;font-family:sans-serif;padding:20px'><h2>Kaydedildi, araba yeniden basliyor...</h2>");
@@ -517,7 +590,15 @@ void setup() {
   Serial.println("3/4 baglanti tamam"); Serial.flush();
 
   const esp_timer_create_args_t a = { .callback = &sesCikis, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "ses", .skip_unhandled_events = true };
-  if (SES_ACIK) {
+  if (SES_ACIK && BT_AD.length() > 0) {                           // Bluetooth hoparlör
+    pinMode(P_HOP, OUTPUT); digitalWrite(P_HOP, LOW);
+    a2dp.set_auto_reconnect(true);
+    a2dp.set_data_callback_in_frames(btVeri);
+    a2dp.set_volume(sesAyar == 1 ? 45 : sesAyar == 2 ? 85 : 127);
+    a2dp.start(BT_AD.c_str());
+    btAcik = true;
+    Serial.printf("Bluetooth hoparlor araniyor: %s\n", BT_AD.c_str());
+  } else if (SES_ACIK) {
     ayar.putInt("sd", 1); sesDeneme = true;                         // "ses deneniyor" işareti; 20 sn sorunsuz çalışınca silinir
     xTaskCreatePinnedToCore(sesGorev, "sesG", 6144, nullptr, 2, nullptr, 1);
     esp_timer_create(&a, &sesZamanlayici); esp_timer_start_periodic(sesZamanlayici, 100);   // 10 kHz
@@ -538,7 +619,7 @@ void loop() {
   // sinyal gücü: zayıfsa hız sınırlanır
   if (simdi - sonTelemetri > 500) {
     sonTelemetri = simdi; rssiSon = rssiOku();
-    if (surucu >= 0) { char b[96]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000)); ws.sendTXT(surucu, b); }
+    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"v\":14}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0); ws.sendTXT(surucu, b); }
   }
   float sinir = 1.0f;
   if (rssiSon != 0 && rssiSon < -86) sinir = 0.7f;           // sadece çok zayıf sinyalde yavaşla
