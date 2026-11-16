@@ -101,7 +101,7 @@ const char SAYFA[] PROGMEM = R"(<!doctype html><meta charset=utf-8><meta name=vi
 <b>Bluetooth hoparlor adi</b> <span style="color:#999">(telefonun Bluetooth listesinde gorunen ad, harfi harfine. Bos = arabadaki kablolu hoparlor)</span><input name=bt value="%BTAD%" maxlength=40 style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <b>Direksiyon</b><select name=dt style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px"><option value=0 %DT0%>DC motor (MOTOR-B, 27/14)</option><option value=1 %DT1%>Servo (turuncu kablo GPIO 27) - 4x4 mafsalli</option></select>
 <b>Servo orta</b> <span style="color:#999">(teker duz durmuyorsa 80-100 arasi oynat)</span><input name=so type=number min=40 max=140 value="%SO%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
-<b>Servo donus acisi</b> <span style="color:#999">(Niva 4x4: 40 = yaklasik 20 derece. 40in ustune cikma)</span><input name=sa type=number min=5 max=45 value="%SA%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
+<b>Servo donus acisi</b> <span style="color:#999">(Niva 4x4: 40 = yaklasik 10 derece. 40in ustune cikma, teker kasaya degiyorsa kucult)</span><input name=sa type=number min=5 max=45 value="%SA%" style="width:100%;padding:10px;font-size:16px;margin:4px 0 10px">
 <label style="font-size:16px"><input type=checkbox name=lk value=1 %LKCHK% style="transform:scale(1.5);margin-right:10px">Direncsiz LED korumasi (LED'lerde direnc yoksa ACIK kalsin)</label><br><br>
 <button style="padding:12px 24px;font-size:16px">Kaydet</button></form>
 <p style="color:#999">%BTDURUM%</p>
