@@ -379,6 +379,7 @@ body.k-joy .joy,body.k-egim .tilt,body.k-tus .tbtn{display:flex}
           <button class="lbtn" data-l="R" aria-label="Sağ sinyal"><svg viewBox="0 0 16 16"><path d="M15 8 L8 2 V5.5 H1 V10.5 H8 V14 Z" fill="currentColor"/></svg><small hidden></small></button>
           <button class="lbtn" data-l="tavan" aria-label="Kaput + tavan farları"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg><small hidden></small></button>
           <button class="lbtn" data-l="sis" aria-label="Sis farları"><svg viewBox="0 0 16 16"><path d="M7 3 C2 3 2 13 7 13 Z" fill="currentColor"/><path d="M9 5 H14 M9 8 H15 M9 11 H14" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.5"/></svg><small hidden></small></button>
+          <button class="lbtn" data-l="c4" aria-label="Çekiş: 4x4 / 4x2"><svg viewBox="0 0 16 16"><text x="8" y="11.2" text-anchor="middle" font-size="7.4" font-weight="700" fill="currentColor" font-family="system-ui,sans-serif">4x4</text></svg><small hidden></small></button>
         </div>
     <div class="heard"><div class="said" id="said"></div></div>
   </div>
@@ -599,7 +600,7 @@ const S = { far:false, tavan:false, sig:0, parlak:80,
             key:0, temp:0, mode:1, load:0, scaled:false, smart:true, trim:0, sens:1, gauge:"dijital",
             exhaust:false, kid:false, pin:"", routes:[], rec:null, play:null, sweepUntil:0, sigArmed:false,
             high:false, flash:false, park:false, show:null, engType:"hilux", hornType:"araba", sesV:0, marsSes:1, kont:"dir", egimHas:1, asistan:true, apiKey:"", revBeep:true, pops:true, vib:true,
-            sis:false, pl:{pf:60,pu:100,pt:100,ps:80,pst:100,psi:100,pg:100}, shz:5, expo:15, bsz:100, renk:"#ffb020", kisa:["sov","uzun","tavan","korna"], cars:[],
+            sis:false, c4:true, pl:{pf:60,pu:100,pt:100,ps:80,pst:100,psi:100,pg:100}, shz:5, expo:15, bsz:100, renk:"#ffb020", kisa:["sov","uzun","tavan","korna"], cars:[],
             name:"", talk:true, autoMic:true, surekli:false, ackBeep:true, cmds:[], driveSec:0 };
 // ayarlar telefonda saklanır
 const CFG_KEYS = ["sur", "mode", "load", "scaled", "smart", "trim", "sens", "gauge", "parlak", "kid", "pin", "routes",
@@ -1069,15 +1070,17 @@ function paint() {
     else if (k === "sel") { on = S.flash; }
     else if (k === "tavan" || k === "sis") { on = S[k]; sm.textContent = on ? "açık" : "kapalı"; }
     else if (k === "4") { on = S.sig === "4"; sm.textContent = on ? "açık" : "kapalı"; }
+    else if (k === "c4") { on = S.c4 !== false; sm.textContent = on ? "4x4" : "4x2"; const t = b.querySelector("text"); if (t) t.textContent = on ? "4x4" : "4x2"; }
     else { on = S.sig === k; sm.textContent = on ? "açık" : "sinyal"; }
     b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
   });
-  document.querySelectorAll(".lbtn").forEach(b => b.classList.toggle("off", S.key === 0 && b.dataset.l !== "4"));
+  document.querySelectorAll(".lbtn").forEach(b => b.classList.toggle("off", S.key === 0 && b.dataset.l !== "4" && b.dataset.l !== "c4"));
   $("#easyBtn").classList.toggle("on", S.easy); $("#easyBtn").setAttribute("aria-pressed", S.easy);
   $("#clutch").classList.toggle("auto", S.easy); $("#clutch b").textContent = S.easy ? "OTOMATİK" : "DEBRİYAJ";
 }
 document.querySelectorAll(".lbtn").forEach(b => { if (b.dataset.l !== "far") tap(b, () => {
   const k = b.dataset.l; buzz(10);
+  if (k === "c4") { cekis(S.c4 === false); return; }
   if (S.key === 0 && k !== "4") { warn("Önce kontağı aç (bir dokunuş: aksesuar)"); return; }
   if (k === "tavan") S.tavan = !S.tavan; else if (k === "sis") S.sis = !S.sis; else { S.sig = S.sig === k ? 0 : k; S.sigArmed = false; }
   paint();
@@ -1142,6 +1145,7 @@ $("#uName").addEventListener("change", e => { S.name = e.target.value.trim().sli
 $("#apiKey").value = S.apiKey || "";
 $("#apiKey").addEventListener("change", e => { S.apiKey = e.target.value.trim(); saveCfg(); said("", yzVar() ? "Asistan hazır" : "Anahtar kaydedildi"); });
 $("#showBtn").addEventListener("click", () => { $("#xdlg").close(); sov(); });
+function cekis(dort) { S.c4 = !!dort; saveCfg(); buzz(dort ? [20, 40, 20] : 15); warn(dort ? "4x4: dört teker çekiyor" : "4x2: sadece ön teker çekiyor"); paint(); return dort ? "4x4 açık" : "4x2: arka çekiş kapalı"; }
 // kendi komutların
 const ACTS = {
   far: ["Farları yak", () => { if (S.key) { S.far = true; S.high = false; } }], uzun: ["Uzun far", () => { if (S.key) { S.far = true; S.high = true; } }],
@@ -1150,6 +1154,7 @@ const ACTS = {
   sov: ["Işık şovu", () => sov()], korna: ["Korna", () => korna(500)], selektor: ["Selektör", () => selektor(3)],
   eko: ["Eko mod", () => { S.mode = 0; modeUI(); }], normal: ["Normal mod", () => { S.mode = 1; modeUI(); }], spor: ["Spor mod", () => { S.mode = 2; modeUI(); }],
   sis: ["Sis farları", () => { if (S.key) S.sis = !S.sis; }], cakar: ["Kaput+tavan aç/kapa", () => { if (S.key) S.tavan = !S.tavan; }],
+  c4: ["4x4 / 4x2 değiştir", () => cekis(S.c4 === false)], dort: ["4x4 aç", () => cekis(true)], iki: ["4x2 (sadece ön)", () => cekis(false)],
   ac: ["Kontağı aç + marş", () => kontak()], kapa: ["Kontağı kapat", () => keyOff()], bul: ["Arabam nerede", () => bul()] };
 // ---- v29: lamba parlaklıkları, görünüm, kısayollar, arabalarım
 (() => {
@@ -1317,6 +1322,8 @@ function komut(raw, yzden) {
   const ask = q => { r = q; say(q); };
   const custom = runCustom(t);
   if (custom) r = custom;
+  else if (has("4x2", "4 x 2", "4*2", "iki çeker", "2 çeker", "ikiçeker", "dört x iki", "dörde iki", "önden çekiş")) r = cekis(false);
+  else if (has("4x4", "4 x 4", "4*4", "dört çeker", "4 çeker", "dörtçeker", "dört x dört", "dörde dört", "dört dört")) r = cekis(!off);
   else if (has("ne yapabilirsin", "komutlar", "yardım")) ask("Kontağı aç, farları yak, uzun far, selektör, sağ sinyal, dörtlü, şov, korna, vites artır, eko mod, spor mod, arabam nerede, rota adıyla git. Bana hızını, devrini, vitesini, motor ısısını ve ne kadar sürdüğünü sorabilirsin.");
   else if (has("hızım", "hız kaç", "ne kadar hızlı")) ask(S.scaled ? `Hızın saatte ${sp} kilometre` : `Hızın yüzde ${sp}`);
   else if (has("devir")) ask(`Devir ${Math.round(S.rpm / 100) * 100}`);
@@ -1751,7 +1758,7 @@ setInterval(() => {
   if (sendTick % 2 === 0 && ws && ws.readyState === 1) ws.send(JSON.stringify({
     g: Math.round(Math.sign(S.v) * Math.pow(Math.abs(S.v), (S.expo || 10) / 10) * 100 * SUR_K[S.sur ?? 1]), d: Math.round(dOut * 100), kontak: S.key, mod: S.mode, rpm: Math.round(S.rpm), motor: +S.engine, yuk: Math.round(S.gas * 100),
     vites: S.gear, mars: +S.starting, far: LO.far, arka: LO.arka, tavan: +LO.tavan, sig: LO.sig || 0, p: S.parlak, park: +(S.park && S.key === 0), stop: +S.braking, egz: +(S.exhaust && S.engine), geri: +LO.geri, korna: +S.horn, dinle: +listening, motorSes: ESP_MOTOR[S.engType] || S.engType, kornaTip: ({ araba: "normal", kamyon2: "kamyon" })[S.hornType] || S.hornType,
-    uzun: +((S.far && S.high) || S.flash || (S.show && S.show.far >= 100)), sis: +S.sis, sh: Math.round(700 - (S.shz || 5) * 55),
+    uzun: +((S.far && S.high) || S.flash || (S.show && S.show.far >= 100)), sis: +S.sis, c4: +(S.c4 !== false), sh: Math.round(700 - (S.shz || 5) * 55),
     pf: Math.round(S.pl.pf * S.parlak / 100), pu: Math.round(S.pl.pu * S.parlak / 100), pt: Math.round(S.pl.pt * S.parlak / 100), ps: Math.round(S.pl.ps * S.parlak / 100),
     pst: Math.round(S.pl.pst * S.parlak / 100), psi: Math.round(S.pl.psi * S.parlak / 100), pg: Math.round(S.pl.pg * S.parlak / 100) }));
 }, 25);
