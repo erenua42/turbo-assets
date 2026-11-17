@@ -15,6 +15,7 @@
     GPIO13 sis farları (2. ULN2003 IN4)
   v14: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
        sinyal hızı, WiFi adı, dirençsiz LED koruması, Bluetooth hoparlör
+  v16: 4x4 / 4x2 secimi (arka kart GPIO 4 ve 2)
   v15: servo direksiyon secenegi (Lada Niva / Hilux 4x4 mafsalli): ayarlar sayfasindan secilir
 */
 #include <WiFi.h>
@@ -51,6 +52,8 @@ const uint32_t KOPMA_MS   = 500;           // bu kadar komut gelmezse araba duru
 const int MPIN[4] = {25, 26, 27, 14};     // motor kartına giden 4 kablo
 int P_IN1 = 25, P_IN2 = 26, P_D1 = 27, P_D2 = 14;   // ileri, geri, sağ, sol (192.168.4.1 sayfasından değiştirilebilir)
 const int P_HOP = 23;
+const int P_A1 = 4, P_A2 = 2;                  // ARKA motor kartı (4x4): IN1+IN3 → 4 (ileri), IN2+IN4 → 2 (geri)
+bool CEKIS4 = true;                            // true = 4x4, false = 4x2 (arka motorlar durur); kumandadan gelir
 Preferences ayar;
 U8G2* oled = nullptr; int ekranTip = 0;           // ekran: 0 SSD1306 (0.96"), 1 SH1106 (1.3"), 2 yok
 int testPin = -1; uint32_t testBitis = 0;   // çekiş: MOTOR-A (25/26), direksiyon: MOTOR-B (27/14)
@@ -267,7 +270,7 @@ void motorYaz(float v) {                // v: -1..1
   if (MOTOR_TERS) v = -v;
   float m = fabsf(v);
   static uint32_t tekmeBitis = 0; static bool duruyordu = true; static int sonYon = 0;
-  if (m < 0.02f) { pwm(P_IN1, 0); pwm(P_IN2, 0); duruyordu = true; return; }  // dur: iki uç da kapalı
+  if (m < 0.02f) { pwm(P_IN1, 0); pwm(P_IN2, 0); pwm(P_A1, 0); pwm(P_A2, 0); duruyordu = true; return; }  // dur: iki uç da kapalı
   int yonS = v > 0 ? 1 : -1;
   if (duruyordu || yonS != sonYon) { tekmeBitis = millis() + 120; duruyordu = false; sonYon = yonS; }   // kalkışta kısa tam güç
   // gaz kadar güç: en az MOTOR_MIN, en çok 255
@@ -276,6 +279,8 @@ void motorYaz(float v) {                // v: -1..1
   if (duty > 255) duty = 255;
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
+  int ad = CEKIS4 ? duty : 0;                          // arka aks: 4x2'de boşta
+  if (v > 0) { pwm(P_A1, ad); pwm(P_A2, 0); } else { pwm(P_A1, 0); pwm(P_A2, ad); }
 }
 // direksiyon: 2 kablolu motor. Az çevirince hafif, çok çevirince tam güç;
 // dayanakta uzun süre tutulursa motor ısınmasın diye güç düşer.
@@ -468,6 +473,7 @@ void mesaj(uint8_t num, uint8_t* veri, size_t n) {
   D.korna = (j["korna"] | 0) != 0; D.egz = (j["egz"] | 0) != 0; D.dinle = (j["dinle"] | 0) != 0;
   if (j["sig"].is<const char*>()) D.sig = j["sig"].as<const char*>()[0]; else D.sig = 0;
   if (j["vites"].is<const char*>()) D.vites = j["vites"].as<const char*>()[0];
+  CEKIS4 = (j["c4"] | 1) != 0;                 // eski kumanda c4 göndermez → 4x4
   D.yeni = j["pf"].is<int>();
   if (D.yeni) {
     D.uzun = (j["uzun"] | 0) != 0; D.sis = (j["sis"] | 0) != 0;
@@ -506,6 +512,7 @@ void setup() {
   { int a = ayar.getInt("i", 25), b = ayar.getInt("g", 26), c = ayar.getInt("r", 27), d = ayar.getInt("l", 14);
     if (a + b + c + d == 92 && a != b && a != c && a != d && b != c && b != d && c != d) { P_IN1 = a; P_IN2 = b; P_D1 = c; P_D2 = d; } }
   for (int p : MPIN) { if (DIR_TIP == 1 && p == P_D1) ledcAttach(p, 50, 14); else ledcAttach(p, 2000, 8); }   // MX1508 düşük frekansta güçlü; servo 50 Hz
+  ledcAttach(P_A1, 2000, 8); ledcAttach(P_A2, 2000, 8); ledcWrite(P_A1, 0); ledcWrite(P_A2, 0);   // arka kart
   if (DIR_TIP == 1) { ledcWrite(P_D2, 0); servoYaz(0); }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) ledcAttach(p, 1000, 8);
   LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "KP-833"); if (BT_AD.length() == 0) BT_AD = "KP-833";
@@ -637,7 +644,7 @@ void loop() {
   // sinyal gücü: zayıfsa hız sınırlanır
   if (simdi - sonTelemetri > 500) {
     sonTelemetri = simdi; rssiSon = rssiOku();
-    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"v\":15}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0); ws.sendTXT(surucu, b); }
+    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"c4\":%d,\"v\":16}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0, CEKIS4 ? 1 : 0); ws.sendTXT(surucu, b); }
   }
   float sinir = 1.0f;
   if (rssiSon != 0 && rssiSon < -86) sinir = 0.7f;           // sadece çok zayıf sinyalde yavaşla
@@ -648,7 +655,7 @@ void loop() {
   float adim = 0.03f;                                   // döngü başına en fazla değişim
   motorCikis += constrain(hedef - motorCikis, -adim, adim);
   if (kopuk && fabsf(motorCikis) > 0) motorCikis *= 0.8f;
-  if (millis() < testBitis) { for (int p : MPIN) pwm(p, p == testPin ? 255 : 0); }      // kablo testi
+  if (millis() < testBitis) { for (int p : MPIN) pwm(p, p == testPin ? 255 : 0); pwm(P_A1, 0); pwm(P_A2, 0); }      // kablo testi
   else { motorYaz(motorCikis); servoYaz(kopuk ? 0 : D.d); }
   isiklar(kopuk && surucu >= 0);
 
