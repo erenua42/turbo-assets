@@ -15,6 +15,7 @@
     GPIO13 sis farları (2. ULN2003 IN4)
   v14: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
        sinyal hızı, WiFi adı, dirençsiz LED koruması, Bluetooth hoparlör
+  v17: Bluetooth hoparlor bos birakilinca kapali; 60 sn'de bulunamazsa arama durur (WiFi kopmasin)
   v16: 4x4 / 4x2 secimi (arka kart GPIO 4 ve 2)
   v15: servo direksiyon secenegi (Lada Niva / Hilux 4x4 mafsalli): ayarlar sayfasindan secilir
 */
@@ -61,7 +62,7 @@ const int P_FAR = 16, P_TAVAN = 17, P_STOP = 18, P_SOL = 19, P_SAG = 21, P_GERI 
 int DIR_TIP = 0, SERVO_ORTA = 90, SERVO_ACI = 30;   // direksiyon: 0 = DC motor (27/14), 1 = servo (sinyal 27) — 4x4 mafsalli
 int LED_MAX = 40;                      // dirençsiz LED koruması: en çok %16 (255 = koruma kapalı)
 String BT_AD = "";                     // Bluetooth hoparlör adı (boşsa arabadaki kablolu hoparlör)
-BluetoothA2DPSource a2dp; bool btAcik = false;
+BluetoothA2DPSource a2dp; bool btAcik = false; uint32_t btBasladi = 0; bool btHicBaglandi = false;
 uint32_t karsilamaBas = 0;             // karşılama şovu başlangıcı
 
 // =================== DURUM (telefondan gelir) ===================
@@ -515,7 +516,7 @@ void setup() {
   ledcAttach(P_A1, 2000, 8); ledcAttach(P_A2, 2000, 8); ledcWrite(P_A1, 0); ledcWrite(P_A2, 0);   // arka kart
   if (DIR_TIP == 1) { ledcWrite(P_D2, 0); servoYaz(0); }
   for (int p : {P_FAR, P_TAVAN, P_STOP, P_SOL, P_SAG, P_GERI, P_SIS}) ledcAttach(p, 1000, 8);
-  LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.getString("bt", "KP-833"); if (BT_AD.length() == 0) BT_AD = "KP-833";
+  LED_MAX = ayar.getInt("lm", 40); AP_ADI = ayar.getString("ap", "MRM-ARABA"); BT_AD = ayar.isKey("bt") ? ayar.getString("bt", "") : String("KP-833");   // bos birakilirsa Bluetooth KAPALI
   if (AP_ADI.length() < 2) AP_ADI = "MRM-ARABA";
   ekranBaslat();                                          // OLED ekran (takılı değilse atlanır)
   { // ses ayarı + çökme koruması: ses açıldıktan hemen sonra kart çökerse ses kendiliğinden kapanır
@@ -622,6 +623,7 @@ void setup() {
     a2dp.set_volume(sesAyar == 1 ? 45 : sesAyar == 2 ? 85 : 127);
     a2dp.start(BT_AD.c_str());
     btAcik = true;
+    btBasladi = millis();
     Serial.printf("Bluetooth hoparlor araniyor: %s\n", BT_AD.c_str());
   } else if (SES_ACIK) {
     ayar.putInt("sd", 1); sesDeneme = true;                         // "ses deneniyor" işareti; 20 sn sorunsuz çalışınca silinir
@@ -634,6 +636,10 @@ void setup() {
 
 // =================== DÖNGÜ ===================
 void loop() {
+  if (btAcik) {                                       // hoparlör 60 sn'de bulunamazsa aramayı bırak: arama WiFi'yi koparıyor
+    if (a2dp.is_connected()) btHicBaglandi = true;
+    else if (!btHicBaglandi && millis() - btBasladi > 60000) { a2dp.set_auto_reconnect(false); a2dp.end(); btAcik = false; Serial.println("Hoparlor bulunamadi, Bluetooth kapatildi (WiFi icin)"); }
+  }
   ws.loop();
   web.handleClient();
   ArduinoOTA.handle();
@@ -644,7 +650,7 @@ void loop() {
   // sinyal gücü: zayıfsa hız sınırlanır
   if (simdi - sonTelemetri > 500) {
     sonTelemetri = simdi; rssiSon = rssiOku();
-    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"c4\":%d,\"v\":16}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0, CEKIS4 ? 1 : 0); ws.sendTXT(surucu, b); }
+    if (surucu >= 0) { char b[140]; snprintf(b, sizeof b, "{\"rssi\":%d,\"surucu\":true,\"pw\":%d,\"up\":%lu,\"bt\":%d,\"c4\":%d,\"v\":17}", rssiSon, (int)(fabsf(motorCikis) * 100), (unsigned long)(simdi / 1000), btAcik ? (a2dp.is_connected() ? 2 : 1) : 0, CEKIS4 ? 1 : 0); ws.sendTXT(surucu, b); }
   }
   float sinir = 1.0f;
   if (rssiSon != 0 && rssiSon < -86) sinir = 0.7f;           // sadece çok zayıf sinyalde yavaşla
