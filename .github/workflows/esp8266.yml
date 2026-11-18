@@ -1,0 +1,46 @@
+name: ESP8266 derle
+on:
+  push:
+    branches: [mrm-8266]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Kart ve kutuphaneler
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp8266:esp8266
+          arduino-cli lib install "WebSockets" "ArduinoJson"
+      - name: Derle
+        run: |
+          echo "#define SURUM ${{ github.run_number }}" > mrm_8266/surum.h
+          arduino-cli compile --fqbn esp8266:esp8266:nodemcuv2:eesz=4M1M --output-dir out mrm_8266
+          ls -la out
+          cp out/mrm_8266.ino.bin MRM-8266.bin
+          echo "${{ github.run_number }}" > surum.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mrm8266-${{ github.run_number }}
+          name: MRM Araba ESP8266 ${{ github.run_number }}
+          target_commitish: mrm-8266
+          make_latest: false
+          files: |
+            MRM-8266.bin
+            surum.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mrm8266-son
+          name: MRM Araba ESP8266 - en son
+          target_commitish: mrm-8266
+          make_latest: false
+          overwrite_files: true
+          files: |
+            MRM-8266.bin
+            surum.txt
