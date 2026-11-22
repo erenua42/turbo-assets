@@ -16,6 +16,8 @@
   v14: ayrı lambalar + her lambaya parlaklık, uzun far, sis, karşılama şovu,
        sinyal hızı, WiFi adı, dirençsiz LED koruması, Bluetooth hoparlör
   v17: Bluetooth hoparlor bos birakilinca kapali; 60 sn'de bulunamazsa arama durur (WiFi kopmasin)
+  v18: gaza basinca yeniden baslamasin: brownout kapali, kalkis tekmesi yok, daha yumusak hizlanma,
+       direksiyon motoru daha az guc; acilista motor pinleri hemen LOW
   v16: 4x4 / 4x2 secimi (arka kart GPIO 4 ve 2)
   v15: servo direksiyon secenegi (Lada Niva / Hilux 4x4 mafsalli): ayarlar sayfasindan secilir
 */
@@ -26,6 +28,8 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include "esp_timer.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
 #include <WebServer.h>
 #include <Update.h>
 #include <Preferences.h>
@@ -276,7 +280,7 @@ void motorYaz(float v) {                // v: -1..1
   if (duruyordu || yonS != sonYon) { tekmeBitis = millis() + 120; duruyordu = false; sonYon = yonS; }   // kalkışta kısa tam güç
   // gaz kadar güç: en az MOTOR_MIN, en çok 255
   int duty = MOTOR_MIN + (int)((m - 0.02f) / 0.98f * (255 - MOTOR_MIN));
-  if (millis() < tekmeBitis) duty = 255;
+  // v18: kalkış tekmesi kaldırıldı (anlık akım ESP'yi yeniden başlatıyordu)
   if (duty > 255) duty = 255;
   if (v > 0) { pwm(P_IN1, duty); pwm(P_IN2, 0); }
   else       { pwm(P_IN1, 0);    pwm(P_IN2, duty); }
@@ -299,8 +303,8 @@ void servoYaz(int d) {                  // d: -100..100
   if (a < 15) { pwm(P_D1, 0); pwm(P_D2, 0); dirYon = 0; return; }
   int yon = d > 0 ? 1 : -1;
   if (yon != dirYon) { dirYon = yon; dirBas = millis(); }
-  int duty = map(a, 15, 100, 150, 255);
-  if (millis() - dirBas > 1500) duty = duty * 6 / 10;
+  int duty = map(a, 15, 100, 120, 200);                 // v18: direksiyon motoru daha az güç
+  if (millis() - dirBas > 800) duty = duty / 2;        // dayanakta ısınmasın
   if (yon > 0) { pwm(P_D1, duty); pwm(P_D2, 0); } else { pwm(P_D1, 0); pwm(P_D2, duty); }
 }
 inline int yuzde(int v) { return constrain(v, 0, 100) * 255 / 100; }
@@ -504,6 +508,8 @@ void wsOlay(uint8_t num, WStype_t tip, uint8_t* veri, size_t n) {
 
 // =================== KURULUM ===================
 void setup() {
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);            // v18: motor kalkışındaki anlık voltaj düşüşünde yeniden başlama
+  for (int p : {25, 26, 27, 14, 4, 2}) { pinMode(p, OUTPUT); digitalWrite(p, LOW); }   // motorlar açılışta boşta dönmesin
   Serial.begin(115200);
   delay(200);
   Serial.println("\nMRM araba aciliyor"); Serial.flush();
@@ -658,7 +664,7 @@ void loop() {
 
   // motor: kopunca dur, yumuşak hızlan
   float hedef = kopuk ? 0 : constrain(D.g, -100, 100) / 100.0f * sinir;
-  float adim = 0.03f;                                   // döngü başına en fazla değişim
+  float adim = (hedef == 0 || fabsf(hedef) < fabsf(motorCikis)) ? 0.03f : 0.012f;   // v18: hızlanma yumuşak, yavaşlama hızlı
   motorCikis += constrain(hedef - motorCikis, -adim, adim);
   if (kopuk && fabsf(motorCikis) > 0) motorCikis *= 0.8f;
   if (millis() < testBitis) { for (int p : MPIN) pwm(p, p == testPin ? 255 : 0); pwm(P_A1, 0); pwm(P_A2, 0); }      // kablo testi
